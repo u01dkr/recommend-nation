@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { db } from "../lib/firebase";
-import {
-  ref, onValue, set, push, update, get
-} from "firebase/database";
+import { ref, onValue, set, push, update, get } from "firebase/database";
 
 // ─── Categories ───────────────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -78,6 +76,32 @@ function ModalSheet({children,onClose}) {
           <button onClick={onClose} style={{background:"#1a1d30",border:"none",borderRadius:"50%",width:30,height:30,cursor:"pointer",color:"#555",fontSize:13}}>✕</button>
         </div>
         {children}
+      </div>
+    </div>
+  );
+}
+
+// ─── Edit Rec Modal ───────────────────────────────────────────────────────────
+function EditRecModal({rec,onSubmit,onClose}) {
+  const [form,setForm]=useState({category:rec.category,field1:rec.field1||"",field2:rec.field2||"",note:rec.note||""});
+  const cat=CAT_MAP[form.category];
+  return (
+    <div>
+      <h2 style={{margin:"0 0 14px",fontSize:22,fontStyle:"italic",letterSpacing:"-0.5px",color:"#f0eee8"}}>Edit rec</h2>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:14}}>
+        {CATEGORIES.map(c=>(
+          <button key={c.id} onClick={()=>setForm(f=>({...f,category:c.id}))}
+            style={{background:form.category===c.id?c.color:"#1a1d30",color:form.category===c.id?"#0d0f1a":"#555",border:"none",borderRadius:10,padding:"8px 4px",fontSize:10,fontFamily:"sans-serif",fontWeight:700,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,transition:"all 0.15s"}}>
+            <span style={{fontSize:18}}>{c.emoji}</span><span style={{lineHeight:1.2,textAlign:"center"}}>{c.label}</span>
+          </button>
+        ))}
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        <input placeholder={`${cat.fields[0]} *`} value={form.field1} onChange={e=>setForm(f=>({...f,field1:e.target.value}))} style={S.input}/>
+        <input placeholder={cat.fields[1]} value={form.field2} onChange={e=>setForm(f=>({...f,field2:e.target.value}))} style={S.input}/>
+        <textarea placeholder={`${cat.fields[2]} (optional)`} value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} rows={3} style={{...S.input,resize:"none",lineHeight:1.6}}/>
+        <button onClick={()=>onSubmit(form)} style={{...S.btn,opacity:form.field1.trim()?1:0.4,marginTop:4}}>Save changes →</button>
+        <button onClick={onClose} style={S.btnSec}>Cancel</button>
       </div>
     </div>
   );
@@ -210,6 +234,7 @@ function AddTop5Modal({form,setForm,onSubmit}) {
   );
 }
 
+// ─── Rec Card ─────────────────────────────────────────────────────────────────
 function RecCard({rec,user,onLike,onSave,showNation,onProfileClick,onOpen}) {
   const cat=CAT_MAP[rec.category]||CATEGORIES[0];
   const liked=user&&(rec.likes||{})[user.name];
@@ -248,20 +273,32 @@ function RecCard({rec,user,onLike,onSave,showNation,onProfileClick,onOpen}) {
   );
 }
 
-function RecDetailView({rec,cat,nationId,nationName,user,onBack,onLike,onSave,onComment,onProfileClick}) {
+// ─── Rec Detail View ──────────────────────────────────────────────────────────
+function RecDetailView({rec,cat,nationName,user,onBack,onLike,onSave,onComment,onEdit,onProfileClick}) {
   const [commentText,setCommentText]=useState("");
+  const [editing,setEditing]=useState(false);
   const bottomRef=useRef(null);
   const inputRef=useRef(null);
   const liked=user&&(rec.likes||{})[user.name];
   const likeCount=Object.keys(rec.likes||{}).length;
   const comments=Object.values(rec.comments||{}).sort((a,b)=>a.ts-b.ts);
   const av=rec.from?.[0]?.toUpperCase()||"?";
+  const isOwner=user?.name===rec.from;
 
   function handleSubmit() {
     if (!commentText.trim()) return;
     onComment(commentText);
     setCommentText("");
     setTimeout(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),50);
+  }
+
+  if(editing) {
+    return (
+      <div style={{minHeight:"100vh",background:"#0d0f1a",color:"#f0eee8",fontFamily:"'Georgia',serif",padding:"24px 18px"}}>
+        <button onClick={()=>setEditing(false)} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:13,fontFamily:"sans-serif",marginBottom:24,padding:0,display:"flex",alignItems:"center",gap:6}}>← Cancel</button>
+        <EditRecModal rec={rec} onClose={()=>setEditing(false)} onSubmit={async(form)=>{await onEdit(form);setEditing(false);}}/>
+      </div>
+    );
   }
 
   return (
@@ -272,6 +309,9 @@ function RecDetailView({rec,cat,nationId,nationName,user,onBack,onLike,onSave,on
           <div style={{fontSize:15,fontWeight:700,letterSpacing:"-0.3px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{rec.field1}</div>
           <div style={{fontSize:11,color:"#555",fontFamily:"sans-serif"}}>{cat.emoji} {cat.label}{nationName?` · ${nationName}`:""}</div>
         </div>
+        {isOwner&&(
+          <button onClick={()=>setEditing(true)} style={{background:"#1a1d30",border:"1px solid #272b42",borderRadius:8,padding:"5px 12px",fontSize:11,fontFamily:"sans-serif",fontWeight:700,color:"#e8c547",cursor:"pointer",flexShrink:0}}>Edit</button>
+        )}
       </div>
       <div style={{flex:1,overflowY:"auto",padding:"0 0 120px"}}>
         <div style={{margin:"16px 18px",background:"#13162a",borderRadius:16,padding:"18px 20px",border:"1px solid #1a1d30",position:"relative",overflow:"hidden"}}>
@@ -359,7 +399,8 @@ function RecDetailView({rec,cat,nationId,nationName,user,onBack,onLike,onSave,on
   );
 }
 
-function Top5Tab({myNations,activeNId,nations,onView,onAdd,user,onProfile}) {
+// ─── Top 5 Tab ────────────────────────────────────────────────────────────────
+function Top5Tab({myNations,activeNId,nations,onView,onAdd,onEdit,user,onProfile}) {
   const displayNations=activeNId?[nations[activeNId]]:myNations;
   const entries=[];
   displayNations.forEach(n=>{
@@ -385,6 +426,7 @@ function Top5Tab({myNations,activeNId,nations,onView,onAdd,user,onProfile}) {
           {entries.map((e,i)=>{
             const cat=CAT_MAP[e.catId];
             const items=nations[e.nationId]?.topFives?.[e.member]?.[e.catId]||[];
+            const isOwn=user?.name===e.member;
             return (
               <div key={i} onClick={()=>onView(e.member,e.nationId,e.catId)}
                 style={{background:"#13162a",borderRadius:14,padding:"14px 18px",border:"1px solid #1a1d30",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"background 0.15s"}}
@@ -398,7 +440,12 @@ function Top5Tab({myNations,activeNId,nations,onView,onAdd,user,onProfile}) {
                   <div style={{fontSize:11,color:"#555",fontFamily:"sans-serif",marginTop:2}}>{items[0]}{items[1]?`, ${items[1]}`:""}{items.length>2?` +${items.length-2} more`:""}</div>
                   {!activeNId&&<div style={{fontSize:10,color:"#3a4060",fontFamily:"sans-serif",marginTop:2}}>{e.nationName}</div>}
                 </div>
-                <span style={{color:"#e8c547",fontSize:14}}>→</span>
+                {isOwn?(
+                  <button onClick={ev=>{ev.stopPropagation();onEdit({member:e.member,nationId:e.nationId,catId:e.catId,items});}}
+                    style={{background:"#1a1d30",border:"1px solid #272b42",borderRadius:8,padding:"4px 10px",fontSize:11,fontFamily:"sans-serif",fontWeight:700,color:"#e8c547",cursor:"pointer",flexShrink:0}}>Edit</button>
+                ):(
+                  <span style={{color:"#e8c547",fontSize:14}}>→</span>
+                )}
               </div>
             );
           })}
@@ -410,46 +457,42 @@ function Top5Tab({myNations,activeNId,nations,onView,onAdd,user,onProfile}) {
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [screen,setScreen]     = useState("welcome");
-  const [user,setUser]         = useState(null);
-  const [nations,setNations]   = useState({});
-  const [myNationIds,setMyNIds]= useState([]);
-  const [activeNId,setActiveNId]=useState(null);
-  const [activeCat,setActiveCat]=useState("all");
-  const [activeTab,setActiveTab]=useState("feed");
-  const [modal,setModal]       = useState(null);
-  const [signupName,setSignupName]=useState("");
-  const [joinCode,setJoinCode] = useState("");
-  const [joinError,setJoinError]=useState("");
-  const [newNationName,setNewNationName]=useState("");
-  const [createdCode,setCreatedCode]=useState(null);
-  const [recForm,setRecForm]   = useState({category:"movies",field1:"",field2:"",note:""});
-  const [top5Form,setTop5Form] = useState({category:"movies",items:Array(5).fill("")});
+  const [screen,setScreen]      = useState("welcome");
+  const [user,setUser]          = useState(null);
+  const [nations,setNations]    = useState({});
+  const [myNationIds,setMyNIds] = useState([]);
+  const [activeNId,setActiveNId]= useState(null);
+  const [activeCat,setActiveCat]= useState("all");
+  const [activeTab,setActiveTab]= useState("feed");
+  const [modal,setModal]        = useState(null);
+  const [signupName,setSignupName]      = useState("");
+  const [joinCode,setJoinCode]          = useState("");
+  const [joinError,setJoinError]        = useState("");
+  const [newNationName,setNewNationName]= useState("");
+  const [createdCode,setCreatedCode]    = useState(null);
+  const [recForm,setRecForm]    = useState({category:"movies",field1:"",field2:"",note:""});
+  const [top5Form,setTop5Form]  = useState({category:"movies",items:Array(5).fill("")});
   const [viewingTop5,setViewingTop5]       = useState(null);
   const [viewingProfile,setViewingProfile] = useState(null);
   const [viewingRec,setViewingRec]         = useState(null);
   const [savedRecs,setSavedRecs]           = useState({});
+  const [editingTop5,setEditingTop5]       = useState(null); // {member,nationId,catId,items}
 
-  // Load user from localStorage on mount
   useEffect(()=>{
-    const saved = localStorage.getItem("rn_user");
-    const savedIds = localStorage.getItem("rn_nations");
+    const savedUser  = localStorage.getItem("rn_user");
+    const savedIds   = localStorage.getItem("rn_nations");
     const savedSaves = localStorage.getItem("rn_saved");
-    if(saved) { setUser(JSON.parse(saved)); setScreen("nations"); }
-    if(savedIds) setMyNIds(JSON.parse(savedIds));
+    if(savedUser)  { setUser(JSON.parse(savedUser)); setScreen("nations"); }
+    if(savedIds)   setMyNIds(JSON.parse(savedIds));
     if(savedSaves) setSavedRecs(JSON.parse(savedSaves));
   },[]);
 
-  // Subscribe to nations from Firebase
   useEffect(()=>{
     if(!myNationIds.length) return;
     const unsubs=[];
     myNationIds.forEach(id=>{
-      const r=ref(db,`nations/${id}`);
-      const unsub=onValue(r,snap=>{
-        if(snap.exists()){
-          setNations(prev=>({...prev,[id]:snap.val()}));
-        }
+      const unsub=onValue(ref(db,`nations/${id}`),snap=>{
+        if(snap.exists()) setNations(prev=>({...prev,[id]:snap.val()}));
       });
       unsubs.push(unsub);
     });
@@ -457,19 +500,25 @@ export default function App() {
   },[myNationIds]);
 
   const myNations    = myNationIds.map(id=>nations[id]).filter(Boolean);
-  const activeNation = activeNId?nations[activeNId]:null;
+  const activeNation = activeNId ? nations[activeNId] : null;
 
   const allRecs = activeNId
     ? Object.entries(nations[activeNId]?.recs||{}).map(([id,r])=>({...r,_fbid:id,_nid:activeNId}))
     : myNationIds.flatMap(nid=>Object.entries(nations[nid]?.recs||{}).map(([id,r])=>({...r,_fbid:id,_nid:nid,_nname:nations[nid]?.name})));
 
-  const allRecsSorted = [...allRecs].sort((a,b)=>(b.ts||0)-(a.ts||0));
-
-  const filteredRecs = allRecsSorted.filter(r=>{
+  const filteredRecs=[...allRecs].sort((a,b)=>(b.ts||0)-(a.ts||0)).filter(r=>{
     if(activeTab==="saved") return savedRecs[r._fbid];
     if(activeCat!=="all")   return r.category===activeCat;
     return true;
   });
+
+  // Keep the open rec detail in sync with live Firebase data
+  const liveRec = viewingRec ? (()=>{
+    const r=viewingRec.rec;
+    const live=nations[r._nid]?.recs?.[r._fbid];
+    if(!live) return r;
+    return {...live,_fbid:r._fbid,_nid:r._nid,_nname:r._nname};
+  })() : null;
 
   function closeModal(){setModal(null);setJoinCode("");setJoinError("");setCreatedCode(null);}
 
@@ -486,65 +535,66 @@ export default function App() {
     const snap=await get(ref(db,`nations/${code}`));
     if(snap.exists()){
       if(myNationIds.includes(code)){setJoinError("You're already in this Nation!");return;}
-      // Add user as member
       await update(ref(db,`nations/${code}/members`),{[user.name]:true});
       const newIds=[...myNationIds,code];
       setMyNIds(newIds);
       localStorage.setItem("rn_nations",JSON.stringify(newIds));
       setJoinCode("");setJoinError("");closeModal();
-      setActiveNId(code);
-      setScreen("feed");
+      setActiveNId(code);setScreen("feed");
     }else{setJoinError("No Nation found with that code.");}
   }
 
   async function handleCreateNation(){
     if(!newNationName.trim())return;
     const code=generateCode();
-    const nationData={id:code,name:newNationName.trim(),code,members:{[user.name]:true},recs:{},topFives:{}};
-    await set(ref(db,`nations/${code}`),nationData);
+    await set(ref(db,`nations/${code}`),{id:code,name:newNationName.trim(),code,members:{[user.name]:true},recs:{},topFives:{}});
     const newIds=[...myNationIds,code];
     setMyNIds(newIds);
     localStorage.setItem("rn_nations",JSON.stringify(newIds));
-    setCreatedCode(code);
-    setNewNationName("");
+    setCreatedCode(code);setNewNationName("");
   }
 
   async function handleAddRec(){
     if(!recForm.field1.trim())return;
     const targetIds=activeNId?[activeNId]:myNationIds;
     for(const tid of targetIds){
-      const rec={category:recForm.category,field1:recForm.field1,field2:recForm.field2,note:recForm.note,from:user.name,ts:Date.now(),likes:{},comments:{}};
-      await push(ref(db,`nations/${tid}/recs`),rec);
+      await push(ref(db,`nations/${tid}/recs`),{category:recForm.category,field1:recForm.field1,field2:recForm.field2,note:recForm.note,from:user.name,ts:Date.now(),likes:{},comments:{}});
     }
     setRecForm({category:"movies",field1:"",field2:"",note:""});
     closeModal();
   }
 
+  async function handleEditRec(rec,form){
+    await update(ref(db,`nations/${rec._nid}/recs/${rec._fbid}`),{
+      category:form.category,field1:form.field1,field2:form.field2,note:form.note
+    });
+  }
+
   async function handleSaveTop5(){
     const tid=activeNId||myNationIds[0];
     if(!tid||!user)return;
-    const items=top5Form.items.filter(i=>i.trim());
-    await set(ref(db,`nations/${tid}/topFives/${user.name}/${top5Form.category}`),items);
+    await set(ref(db,`nations/${tid}/topFives/${user.name}/${top5Form.category}`),top5Form.items.filter(i=>i.trim()));
     setTop5Form({category:"movies",items:Array(5).fill("")});
     closeModal();
   }
 
+  async function handleEditTop5(nationId, member, catId, items){
+    await set(ref(db,`nations/${nationId}/topFives/${member}/${catId}`), items.filter(i=>i.trim()));
+    setEditingTop5(null);
+  }
+
   async function toggleLike(rec){
-    const tid=rec._nid;
-    const fbid=rec._fbid;
-    if(!tid||!user||!fbid)return;
-    const likeRef=ref(db,`nations/${tid}/recs/${fbid}/likes/${user.name}`);
+    const likeRef=ref(db,`nations/${rec._nid}/recs/${rec._fbid}/likes/${user.name}`);
     const snap=await get(likeRef);
     if(snap.exists()) await set(likeRef,null);
     else await set(likeRef,true);
   }
 
   function toggleSave(rec){
-    const fbid=rec._fbid;
     setSavedRecs(prev=>{
       const next={...prev};
-      if(next[fbid]) delete next[fbid];
-      else next[fbid]=true;
+      if(next[rec._fbid]) delete next[rec._fbid];
+      else next[rec._fbid]=true;
       localStorage.setItem("rn_saved",JSON.stringify(next));
       return next;
     });
@@ -552,19 +602,37 @@ export default function App() {
 
   async function addComment(rec,text){
     if(!text.trim()||!user)return;
-    const comment={from:user.name,text:text.trim(),ts:Date.now()};
-    await push(ref(db,`nations/${rec._nid}/recs/${rec._fbid}/comments`),comment);
+    await push(ref(db,`nations/${rec._nid}/recs/${rec._fbid}/comments`),{from:user.name,text:text.trim(),ts:Date.now()});
   }
 
-  // ── Profile view ──
+  // ── Edit Top 5 ────────────────────────────────────────────────────────────
+  if(editingTop5){
+    const{member,nationId,catId,items}=editingTop5;
+    const cat=CAT_MAP[catId];
+    const paddedItems=[...items,...Array(5).fill("")].slice(0,5);
+    const [form,setForm]=useState({category:catId,items:paddedItems});
+    return (
+      <div style={{minHeight:"100vh",background:"#0d0f1a",color:"#f0eee8",fontFamily:"'Georgia',serif",padding:"36px 22px 80px",maxWidth:520,margin:"0 auto"}}>
+        <button onClick={()=>setEditingTop5(null)} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:13,fontFamily:"sans-serif",marginBottom:28,padding:0,display:"flex",alignItems:"center",gap:6}}>← Cancel</button>
+        <div style={{fontSize:11,letterSpacing:"0.2em",textTransform:"uppercase",color:cat.color,marginBottom:6,fontFamily:"sans-serif",fontWeight:700}}>{cat.emoji} {cat.label}</div>
+        <h1 style={{fontSize:26,fontWeight:700,letterSpacing:"-0.8px",margin:"0 0 20px",fontStyle:"italic"}}>Edit your Top 5</h1>
+        <AddTop5Modal form={form} setForm={setForm} onSubmit={()=>handleEditTop5(nationId,member,form.category,form.items)}/>
+      </div>
+    );
+  }
+
+  // ── Profile view ──────────────────────────────────────────────────────────
   if(viewingProfile){
     const{member,nationId}=viewingProfile;
-    const sourceNations=nationId?[nations[nationId]]:myNations;
+    // FIX: always search all joined nations so Top 5s are found correctly
+    const sourceNations=nationId?[nations[nationId]].filter(Boolean):myNations;
     const memberRecs=sourceNations.flatMap(n=>Object.entries(n?.recs||{}).filter(([,r])=>r.from===member).map(([fbid,r])=>({...r,_fbid:fbid,_nname:n.name,_nid:n.id})));
     const memberTop5s=[];
     sourceNations.forEach(n=>{
       const tf=n?.topFives?.[member]||{};
-      Object.keys(tf).forEach(catId=>{if(tf[catId]?.length)memberTop5s.push({catId,items:tf[catId],nationId:n.id,nationName:n.name});});
+      Object.keys(tf).forEach(catId=>{
+        if(tf[catId]?.length) memberTop5s.push({catId,items:tf[catId],nationId:n.id,nationName:n.name});
+      });
     });
     const isMe=user?.name===member;
     return (
@@ -575,6 +643,11 @@ export default function App() {
             <h1 style={{margin:0,fontSize:24,fontWeight:700,letterSpacing:"-0.8px",fontStyle:"italic"}}>{member}{isMe&&<span style={{fontSize:13,color:"#e8c547",fontStyle:"normal",fontWeight:400,fontFamily:"sans-serif"}}> (you)</span>}</h1>
             <div style={{fontSize:12,color:"#555",fontFamily:"sans-serif",marginTop:3}}>{memberRecs.length} recs · {memberTop5s.length} Top 5 lists</div>
           </div>
+        </div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:24}}>
+          {sourceNations.filter(n=>n?.members?.[member]).map(n=>(
+            <span key={n.id} style={{background:"#1a1d30",borderRadius:8,padding:"4px 10px",fontSize:11,fontFamily:"sans-serif",color:"#666"}}>{n.name}</span>
+          ))}
         </div>
         {memberTop5s.length>0&&(
           <div style={{marginBottom:24}}>
@@ -635,7 +708,7 @@ export default function App() {
     );
   }
 
-  // ── Top 5 detail view ──
+  // ── Top 5 detail ──────────────────────────────────────────────────────────
   if(viewingTop5){
     const{member,nationId,category}=viewingTop5;
     const items=nations[nationId]?.topFives?.[member]?.[category]||[];
@@ -657,22 +730,21 @@ export default function App() {
     );
   }
 
-  // ── Rec detail view ──
-  if(viewingRec){
-    const rec=viewingRec.rec;
-    const cat=CAT_MAP[rec.category]||CATEGORIES[0];
+  // ── Rec detail ────────────────────────────────────────────────────────────
+  if(viewingRec && liveRec){
+    const cat=CAT_MAP[liveRec.category]||CATEGORIES[0];
     return (
       <RecDetailView
-        rec={{...rec,saved:savedRecs[rec._fbid]}}
+        rec={{...liveRec,saved:savedRecs[liveRec._fbid]}}
         cat={cat}
-        nationId={rec._nid}
-        nationName={nations[rec._nid]?.name}
+        nationName={nations[liveRec._nid]?.name}
         user={user}
         onBack={()=>setViewingRec(null)}
-        onLike={()=>toggleLike(rec)}
-        onSave={()=>toggleSave(rec)}
-        onComment={text=>addComment(rec,text)}
-        onProfileClick={member=>setViewingProfile({member,nationId:rec._nid})}
+        onLike={()=>toggleLike(liveRec)}
+        onSave={()=>toggleSave(liveRec)}
+        onComment={text=>addComment(liveRec,text)}
+        onEdit={form=>handleEditRec(liveRec,form)}
+        onProfileClick={member=>setViewingProfile({member,nationId:liveRec._nid})}
       />
     );
   }
@@ -680,7 +752,7 @@ export default function App() {
   if(screen==="welcome") return <WelcomeScreen onStart={()=>setScreen("signup")}/>;
   if(screen==="signup")  return <SignupScreen name={signupName} setName={setSignupName} onSubmit={handleSignup}/>;
 
-  // ── Nations screen ──
+  // ── Nations screen ────────────────────────────────────────────────────────
   if(screen==="nations") return (
     <div style={{minHeight:"100vh",background:"#0d0f1a",fontFamily:"'Georgia',serif",color:"#f0eee8"}}>
       <div style={{maxWidth:480,margin:"0 auto",padding:"40px 22px 100px"}}>
@@ -727,7 +799,7 @@ export default function App() {
     </div>
   );
 
-  // ── Main feed ──
+  // ── Main feed ─────────────────────────────────────────────────────────────
   return (
     <div style={{minHeight:"100vh",background:"#0d0f1a",color:"#f0eee8",fontFamily:"'Georgia',serif"}}>
       <header style={{background:"#0d0f1acc",backdropFilter:"blur(14px)",position:"sticky",top:0,zIndex:50,borderBottom:"1px solid #1a1d30"}}>
@@ -792,6 +864,7 @@ export default function App() {
           <Top5Tab myNations={myNations} activeNId={activeNId} nations={nations}
             onView={(member,nId,cat)=>setViewingTop5({member,nationId:nId,category:cat})}
             onAdd={()=>setModal("addTop5")} user={user}
+            onEdit={({member,nationId,catId,items})=>setEditingTop5({member,nationId,catId,items})}
             onProfile={(member,nId)=>setViewingProfile({member,nationId:nId})}/>
         )}
 
