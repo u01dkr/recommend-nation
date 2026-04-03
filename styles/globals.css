@@ -1,0 +1,28 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #0d0f1a; font-family: 'Georgia', serif; color: #f0eee8; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.rc {
+  animation: fadeUp 0.25s ease both;
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+.rc:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.4) !important;
+}
+.comment-bubble { animation: slideIn 0.2s ease both; }
+.av-tap:hover   { opacity: 0.75; cursor: pointer; }
+.from-tap:hover { color: #e8c547 !important; cursor: pointer; }
+
+input:focus, textarea:focus { border-color: #e8c547 !important; outline: none; }
+
+::-webkit-scrollbar { height: 3px; width: 3px; }
+::-webkit-scrollbar-thumb { background: #2e3450; border-radius: 4px; }
