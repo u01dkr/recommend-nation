@@ -399,6 +399,24 @@ function RecDetailView({rec,cat,nationName,user,onBack,onLike,onSave,onComment,o
   );
 }
 
+// ─── Edit Top 5 Screen (proper component so hooks work correctly) ─────────────
+function EditTop5Screen({editingTop5,onCancel,onSave}) {
+  const{member,nationId,catId,items}=editingTop5;
+  const cat=CAT_MAP[catId];
+  const paddedItems=[...items,...Array(5).fill("")].slice(0,5);
+  const [form,setForm]=useState({category:catId,items:paddedItems});
+  return (
+    <div style={{minHeight:"100vh",background:"#0d0f1a",color:"#f0eee8",fontFamily:"'Georgia',serif"}}>
+      <div style={{maxWidth:520,margin:"0 auto",padding:"36px 22px 80px"}}>
+        <button onClick={onCancel} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:13,fontFamily:"sans-serif",marginBottom:28,padding:0,display:"flex",alignItems:"center",gap:6}}>← Cancel</button>
+        <div style={{fontSize:11,letterSpacing:"0.2em",textTransform:"uppercase",color:cat.color,marginBottom:6,fontFamily:"sans-serif",fontWeight:700}}>{cat.emoji} {cat.label}</div>
+        <h1 style={{fontSize:26,fontWeight:700,letterSpacing:"-0.8px",margin:"0 0 24px",fontStyle:"italic"}}>Edit your Top 5</h1>
+        <AddTop5Modal form={form} setForm={setForm} onSubmit={()=>onSave(nationId,member,form.category,form.items)}/>
+      </div>
+    </div>
+  );
+}
+
 // ─── Top 5 Tab ────────────────────────────────────────────────────────────────
 function Top5Tab({myNations,activeNId,nations,onView,onAdd,onEdit,user,onProfile}) {
   const displayNations=activeNId?[nations[activeNId]]:myNations;
@@ -607,17 +625,12 @@ export default function App() {
 
   // ── Edit Top 5 ────────────────────────────────────────────────────────────
   if(editingTop5){
-    const{member,nationId,catId,items}=editingTop5;
-    const cat=CAT_MAP[catId];
-    const paddedItems=[...items,...Array(5).fill("")].slice(0,5);
-    const [form,setForm]=useState({category:catId,items:paddedItems});
     return (
-      <div style={{minHeight:"100vh",background:"#0d0f1a",color:"#f0eee8",fontFamily:"'Georgia',serif",padding:"36px 22px 80px",maxWidth:520,margin:"0 auto"}}>
-        <button onClick={()=>setEditingTop5(null)} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:13,fontFamily:"sans-serif",marginBottom:28,padding:0,display:"flex",alignItems:"center",gap:6}}>← Cancel</button>
-        <div style={{fontSize:11,letterSpacing:"0.2em",textTransform:"uppercase",color:cat.color,marginBottom:6,fontFamily:"sans-serif",fontWeight:700}}>{cat.emoji} {cat.label}</div>
-        <h1 style={{fontSize:26,fontWeight:700,letterSpacing:"-0.8px",margin:"0 0 20px",fontStyle:"italic"}}>Edit your Top 5</h1>
-        <AddTop5Modal form={form} setForm={setForm} onSubmit={()=>handleEditTop5(nationId,member,form.category,form.items)}/>
-      </div>
+      <EditTop5Screen
+        editingTop5={editingTop5}
+        onCancel={()=>setEditingTop5(null)}
+        onSave={(nationId,member,catId,items)=>handleEditTop5(nationId,member,catId,items)}
+      />
     );
   }
 
@@ -656,7 +669,7 @@ export default function App() {
               {memberTop5s.map((t,i)=>{
                 const cat=CAT_MAP[t.catId];
                 return (
-                  <div key={i} onClick={()=>setViewingTop5({member,nationId:t.nationId,category:t.catId})}
+                  <div key={i} onClick={()=>{setViewingProfile(null);setViewingTop5({member,nationId:t.nationId,category:t.catId});}}
                     style={{background:"#13162a",borderRadius:12,padding:"13px 16px",border:"1px solid #1a1d30",cursor:"pointer",display:"flex",alignItems:"center",gap:12}}
                     onMouseEnter={e=>e.currentTarget.style.background="#1a1d30"}
                     onMouseLeave={e=>e.currentTarget.style.background="#13162a"}>
