@@ -1,6 +1,14 @@
 import { useState, useRef, useEffect } from "react";
-import { db } from "../lib/firebase";
+import { db, auth } from "../lib/firebase";
 import { ref, onValue, set, push, update, get } from "firebase/database";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  updateProfile,
+  sendPasswordResetEmail,
+} from "firebase/auth";
 
 // ─── Categories ───────────────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -39,6 +47,19 @@ function timeAgo(ts) {
   const d = Math.floor(h/24);
   if (d < 7)  return `${d}d ago`;
   return new Date(ts).toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+}
+
+function friendlyAuthError(code) {
+  switch(code) {
+    case "auth/email-already-in-use":    return "An account with this email already exists.";
+    case "auth/invalid-email":           return "Please enter a valid email address.";
+    case "auth/weak-password":           return "Password should be at least 6 characters.";
+    case "auth/user-not-found":          return "No account found with this email.";
+    case "auth/wrong-password":          return "Incorrect password. Try again or reset it.";
+    case "auth/invalid-credential":      return "Incorrect email or password.";
+    case "auth/too-many-requests":       return "Too many attempts. Please try again later.";
+    default:                             return "Something went wrong. Please try again.";
+  }
 }
 
 const S = {
@@ -81,6 +102,121 @@ function ModalSheet({children,onClose}) {
   );
 }
 
+// ─── Auth Screens ─────────────────────────────────────────────────────────────
+function WelcomeScreen({onStart}) {
+  return (
+    <div style={{minHeight:"100vh",background:"#0d0f1a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32,fontFamily:"'Georgia',serif"}}>
+      <div style={{animation:"fadeUp 0.7s ease",textAlign:"center",maxWidth:360}}>
+        <div style={{fontSize:11,letterSpacing:"0.25em",textTransform:"uppercase",color:"#e8c547",marginBottom:16,fontFamily:"sans-serif",fontWeight:700}}>✦ Recommend Nation ✦</div>
+        <h1 style={{fontSize:52,fontWeight:700,letterSpacing:"-2.5px",color:"#f0eee8",margin:"0 0 14px",lineHeight:1,fontStyle:"italic"}}>Trust your<br/>people.</h1>
+        <p style={{color:"#444",fontSize:15,lineHeight:1.7,margin:"0 0 44px"}}>Movies, TV, music, books, restaurants, places to stay & visit — shared with the people whose taste you trust.</p>
+        <button onClick={onStart} style={{...S.btn,width:"auto",padding:"14px 44px",fontSize:16,borderRadius:16}}>Get started</button>
+      </div>
+    </div>
+  );
+}
+
+function AuthScreen({onAuth}) {
+  const [mode,setMode]       = useState("login"); // login | signup | reset
+  const [name,setName]       = useState("");
+  const [email,setEmail]     = useState("");
+  const [password,setPassword] = useState("");
+  const [error,setError]     = useState("");
+  const [loading,setLoading] = useState(false);
+  const [resetSent,setResetSent] = useState(false);
+
+  async function handleSignup() {
+    if (!name.trim())     { setError("Please enter your name."); return; }
+    if (!email.trim())    { setError("Please enter your email."); return; }
+    if (password.length < 6) { setError("Password should be at least 6 characters."); return; }
+    setLoading(true); setError("");
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      await updateProfile(cred.user, {displayName: name.trim()});
+      // Store user profile in database
+      await set(ref(db, `users/${cred.user.uid}`), {name: name.trim(), email: email.trim(), nationIds: []});
+      onAuth(cred.user);
+    } catch(e) { setError(friendlyAuthError(e.code)); }
+    setLoading(false);
+  }
+
+  async function handleLogin() {
+    if (!email.trim() || !password) { setError("Please enter your email and password."); return; }
+    setLoading(true); setError("");
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+      onAuth(cred.user);
+    } catch(e) { setError(friendlyAuthError(e.code)); }
+    setLoading(false);
+  }
+
+  async function handleReset() {
+    if (!email.trim()) { setError("Please enter your email address."); return; }
+    setLoading(true); setError("");
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setResetSent(true);
+    } catch(e) { setError(friendlyAuthError(e.code)); }
+    setLoading(false);
+  }
+
+  if(mode==="reset") return (
+    <div style={{minHeight:"100vh",background:"#0d0f1a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32,fontFamily:"'Georgia',serif"}}>
+      <div style={{width:"100%",maxWidth:380}}>
+        <button onClick={()=>{setMode("login");setError("");setResetSent(false);}} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:13,fontFamily:"sans-serif",marginBottom:28,padding:0}}>← Back to login</button>
+        <h2 style={{fontSize:28,fontWeight:700,letterSpacing:"-1px",marginBottom:6,fontStyle:"italic",color:"#f0eee8"}}>Reset password</h2>
+        <p style={{color:"#555",fontSize:13,fontFamily:"sans-serif",marginBottom:22}}>We'll send a reset link to your email.</p>
+        {resetSent?(
+          <div style={{background:"#1a2a1a",border:"1px solid #2a4a2a",borderRadius:10,padding:"14px 16px",fontSize:13,color:"#7ae8a0",fontFamily:"sans-serif"}}>
+            ✓ Reset email sent! Check your inbox.
+          </div>
+        ):(
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            <input placeholder="Email address" value={email} onChange={e=>setEmail(e.target.value)} style={S.input} type="email"/>
+            {error&&<p style={{color:"#e85454",fontSize:12,fontFamily:"sans-serif",margin:0}}>{error}</p>}
+            <button onClick={handleReset} disabled={loading} style={{...S.btn,opacity:loading?0.6:1}}>{loading?"Sending…":"Send reset link →"}</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{minHeight:"100vh",background:"#0d0f1a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32,fontFamily:"'Georgia',serif"}}>
+      <div style={{width:"100%",maxWidth:380}}>
+        <div style={{fontSize:11,letterSpacing:"0.25em",textTransform:"uppercase",color:"#e8c547",marginBottom:24,fontFamily:"sans-serif",fontWeight:700,textAlign:"center"}}>✦ Recommend Nation ✦</div>
+        <h2 style={{fontSize:28,fontWeight:700,letterSpacing:"-1px",marginBottom:6,fontStyle:"italic",color:"#f0eee8"}}>
+          {mode==="login"?"Welcome back":"Create account"}
+        </h2>
+        <p style={{color:"#555",fontSize:13,fontFamily:"sans-serif",marginBottom:22}}>
+          {mode==="login"?"Sign in to your Nation.":"Join and start sharing recommendations."}
+        </p>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {mode==="signup"&&(
+            <input placeholder="Your name" value={name} onChange={e=>setName(e.target.value)} style={S.input}/>
+          )}
+          <input placeholder="Email address" value={email} onChange={e=>setEmail(e.target.value)} style={S.input} type="email"
+            onKeyDown={e=>e.key==="Enter"&&(mode==="login"?handleLogin():handleSignup())}/>
+          <input placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} style={S.input} type="password"
+            onKeyDown={e=>e.key==="Enter"&&(mode==="login"?handleLogin():handleSignup())}/>
+          {error&&<p style={{color:"#e85454",fontSize:12,fontFamily:"sans-serif",margin:0}}>{error}</p>}
+          {mode==="login"&&(
+            <button onClick={()=>{setMode("reset");setError("");}} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:12,fontFamily:"sans-serif",padding:0,textAlign:"left",marginTop:-4}}>Forgot password?</button>
+          )}
+          <button onClick={mode==="login"?handleLogin:handleSignup} disabled={loading}
+            style={{...S.btn,opacity:loading?0.6:1,marginTop:4}}>
+            {loading?(mode==="login"?"Signing in…":"Creating account…"):(mode==="login"?"Sign in →":"Create account →")}
+          </button>
+          <button onClick={()=>{setMode(mode==="login"?"signup":"login");setError("");}}
+            style={{...S.btnSec,fontSize:13}}>
+            {mode==="login"?"Don't have an account? Sign up":"Already have an account? Sign in"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Edit Rec Modal ───────────────────────────────────────────────────────────
 function EditRecModal({rec,onSubmit,onClose}) {
   const [form,setForm]=useState({category:rec.category,field1:rec.field1||"",field2:rec.field2||"",note:rec.note||""});
@@ -102,35 +238,6 @@ function EditRecModal({rec,onSubmit,onClose}) {
         <textarea placeholder={`${cat.fields[2]} (optional)`} value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} rows={3} style={{...S.input,resize:"none",lineHeight:1.6}}/>
         <button onClick={()=>onSubmit(form)} style={{...S.btn,opacity:form.field1.trim()?1:0.4,marginTop:4}}>Save changes →</button>
         <button onClick={onClose} style={S.btnSec}>Cancel</button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Screens ──────────────────────────────────────────────────────────────────
-function WelcomeScreen({onStart}) {
-  return (
-    <div style={{minHeight:"100vh",background:"#0d0f1a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32,fontFamily:"'Georgia',serif"}}>
-      <div style={{animation:"fadeUp 0.7s ease",textAlign:"center",maxWidth:360}}>
-        <div style={{fontSize:11,letterSpacing:"0.25em",textTransform:"uppercase",color:"#e8c547",marginBottom:16,fontFamily:"sans-serif",fontWeight:700}}>✦ Recommend Nation ✦</div>
-        <h1 style={{fontSize:52,fontWeight:700,letterSpacing:"-2.5px",color:"#f0eee8",margin:"0 0 14px",lineHeight:1,fontStyle:"italic"}}>Trust your<br/>people.</h1>
-        <p style={{color:"#444",fontSize:15,lineHeight:1.7,margin:"0 0 44px"}}>Movies, TV, music, books, restaurants, places to stay & visit — shared with the people whose taste you trust.</p>
-        <button onClick={onStart} style={{...S.btn,width:"auto",padding:"14px 44px",fontSize:16,borderRadius:16}}>Get started</button>
-      </div>
-    </div>
-  );
-}
-
-function SignupScreen({name,setName,onSubmit}) {
-  return (
-    <div style={{minHeight:"100vh",background:"#0d0f1a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32,fontFamily:"'Georgia',serif"}}>
-      <div style={{width:"100%",maxWidth:380}}>
-        <h2 style={{fontSize:28,fontWeight:700,letterSpacing:"-1px",marginBottom:6,fontStyle:"italic",color:"#f0eee8"}}>What's your name?</h2>
-        <p style={{color:"#555",fontSize:13,fontFamily:"sans-serif",marginBottom:22}}>Your name is shown to your Nation members.</p>
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <input placeholder="Your name" value={name} onChange={e=>setName(e.target.value)} style={S.input} onKeyDown={e=>e.key==="Enter"&&onSubmit()}/>
-          <button onClick={onSubmit} style={{...S.btn,opacity:name.trim()?1:0.4}}>Continue →</button>
-        </div>
       </div>
     </div>
   );
@@ -399,7 +506,7 @@ function RecDetailView({rec,cat,nationName,user,onBack,onLike,onSave,onComment,o
   );
 }
 
-// ─── Edit Top 5 Screen (proper component so hooks work correctly) ─────────────
+// ─── Edit Top 5 Screen ────────────────────────────────────────────────────────
 function EditTop5Screen({editingTop5,onCancel,onSave}) {
   const{member,nationId,catId,items}=editingTop5;
   const cat=CAT_MAP[catId];
@@ -475,6 +582,7 @@ function Top5Tab({myNations,activeNId,nations,onView,onAdd,onEdit,user,onProfile
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function App() {
+  const [authUser,setAuthUser]  = useState(undefined); // undefined = loading, null = not logged in
   const [screen,setScreen]      = useState("welcome");
   const [user,setUser]          = useState(null);
   const [nations,setNations]    = useState({});
@@ -483,7 +591,6 @@ export default function App() {
   const [activeCat,setActiveCat]= useState("all");
   const [activeTab,setActiveTab]= useState("feed");
   const [modal,setModal]        = useState(null);
-  const [signupName,setSignupName]      = useState("");
   const [joinCode,setJoinCode]          = useState("");
   const [joinError,setJoinError]        = useState("");
   const [newNationName,setNewNationName]= useState("");
@@ -494,17 +601,36 @@ export default function App() {
   const [viewingProfile,setViewingProfile] = useState(null);
   const [viewingRec,setViewingRec]         = useState(null);
   const [savedRecs,setSavedRecs]           = useState({});
-  const [editingTop5,setEditingTop5]       = useState(null); // {member,nationId,catId,items}
+  const [editingTop5,setEditingTop5]       = useState(null);
 
+  // ── Listen to Firebase Auth state ──
   useEffect(()=>{
-    const savedUser  = localStorage.getItem("rn_user");
-    const savedIds   = localStorage.getItem("rn_nations");
-    const savedSaves = localStorage.getItem("rn_saved");
-    if(savedUser)  { setUser(JSON.parse(savedUser)); setScreen("nations"); }
-    if(savedIds)   setMyNIds(JSON.parse(savedIds));
-    if(savedSaves) setSavedRecs(JSON.parse(savedSaves));
+    const unsub = onAuthStateChanged(auth, async firebaseUser => {
+      if(firebaseUser) {
+        setAuthUser(firebaseUser);
+        // Load user profile from database
+        const snap = await get(ref(db, `users/${firebaseUser.uid}`));
+        if(snap.exists()) {
+          const profile = snap.val();
+          setUser({name: profile.name, uid: firebaseUser.uid});
+          const ids = profile.nationIds ? Object.keys(profile.nationIds) : [];
+          setMyNIds(ids);
+          // Load saved recs from database
+          const savedSnap = await get(ref(db, `users/${firebaseUser.uid}/savedRecs`));
+          if(savedSnap.exists()) setSavedRecs(savedSnap.val()||{});
+        }
+        setScreen("nations");
+      } else {
+        setAuthUser(null);
+        setUser(null);
+        setMyNIds([]);
+        setScreen("welcome");
+      }
+    });
+    return ()=>unsub();
   },[]);
 
+  // ── Subscribe to nations from Firebase ──
   useEffect(()=>{
     if(!myNationIds.length) return;
     const unsubs=[];
@@ -530,7 +656,6 @@ export default function App() {
     return true;
   });
 
-  // Keep the open rec detail in sync with live Firebase data
   const liveRec = viewingRec ? (()=>{
     const r=viewingRec.rec;
     const live=nations[r._nid]?.recs?.[r._fbid];
@@ -540,23 +665,15 @@ export default function App() {
 
   function closeModal(){setModal(null);setJoinCode("");setJoinError("");setCreatedCode(null);}
 
-  function handleSignup(){
-    if(!signupName.trim())return;
-    const u={name:signupName.trim()};
-    setUser(u);
-    localStorage.setItem("rn_user",JSON.stringify(u));
-    setScreen("nations");
-  }
-
   async function handleJoin(){
     const code=joinCode.trim().toUpperCase();
     const snap=await get(ref(db,`nations/${code}`));
     if(snap.exists()){
       if(myNationIds.includes(code)){setJoinError("You're already in this Nation!");return;}
       await update(ref(db,`nations/${code}/members`),{[user.name]:true});
+      await update(ref(db,`users/${authUser.uid}/nationIds`),{[code]:true});
       const newIds=[...myNationIds,code];
       setMyNIds(newIds);
-      localStorage.setItem("rn_nations",JSON.stringify(newIds));
       setJoinCode("");setJoinError("");closeModal();
       setActiveNId(code);setScreen("feed");
     }else{setJoinError("No Nation found with that code.");}
@@ -566,9 +683,9 @@ export default function App() {
     if(!newNationName.trim())return;
     const code=generateCode();
     await set(ref(db,`nations/${code}`),{id:code,name:newNationName.trim(),code,members:{[user.name]:true},recs:{},topFives:{}});
+    await update(ref(db,`users/${authUser.uid}/nationIds`),{[code]:true});
     const newIds=[...myNationIds,code];
     setMyNIds(newIds);
-    localStorage.setItem("rn_nations",JSON.stringify(newIds));
     setCreatedCode(code);setNewNationName("");
   }
 
@@ -596,8 +713,8 @@ export default function App() {
     closeModal();
   }
 
-  async function handleEditTop5(nationId, member, catId, items){
-    await set(ref(db,`nations/${nationId}/topFives/${member}/${catId}`), items.filter(i=>i.trim()));
+  async function handleEditTop5(nationId,member,catId,items){
+    await set(ref(db,`nations/${nationId}/topFives/${member}/${catId}`),items.filter(i=>i.trim()));
     setEditingTop5(null);
   }
 
@@ -608,14 +725,16 @@ export default function App() {
     else await set(likeRef,true);
   }
 
-  function toggleSave(rec){
-    setSavedRecs(prev=>{
-      const next={...prev};
-      if(next[rec._fbid]) delete next[rec._fbid];
-      else next[rec._fbid]=true;
-      localStorage.setItem("rn_saved",JSON.stringify(next));
-      return next;
-    });
+  async function toggleSave(rec){
+    const saveRef=ref(db,`users/${authUser.uid}/savedRecs/${rec._fbid}`);
+    const snap=await get(saveRef);
+    if(snap.exists()){
+      await set(saveRef,null);
+      setSavedRecs(prev=>{const n={...prev};delete n[rec._fbid];return n;});
+    } else {
+      await set(saveRef,true);
+      setSavedRecs(prev=>({...prev,[rec._fbid]:true}));
+    }
   }
 
   async function addComment(rec,text){
@@ -623,29 +742,35 @@ export default function App() {
     await push(ref(db,`nations/${rec._nid}/recs/${rec._fbid}/comments`),{from:user.name,text:text.trim(),ts:Date.now()});
   }
 
-  // ── Edit Top 5 ────────────────────────────────────────────────────────────
-  if(editingTop5){
-    return (
-      <EditTop5Screen
-        editingTop5={editingTop5}
-        onCancel={()=>setEditingTop5(null)}
-        onSave={(nationId,member,catId,items)=>handleEditTop5(nationId,member,catId,items)}
-      />
-    );
+  async function handleSignOut(){
+    await signOut(auth);
+    setNations({});
+    setMyNIds([]);
+    setActiveNId(null);
+    setSavedRecs({});
   }
 
-  // ── Profile view ──────────────────────────────────────────────────────────
+  // ── Loading state ──
+  if(authUser===undefined) return (
+    <div style={{minHeight:"100vh",background:"#0d0f1a",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{color:"#e8c547",fontSize:11,letterSpacing:"0.25em",textTransform:"uppercase",fontFamily:"sans-serif",fontWeight:700}}>✦ Loading…</div>
+    </div>
+  );
+
+  // ── Edit Top 5 ──
+  if(editingTop5) return (
+    <EditTop5Screen editingTop5={editingTop5} onCancel={()=>setEditingTop5(null)} onSave={handleEditTop5}/>
+  );
+
+  // ── Profile view ──
   if(viewingProfile){
     const{member,nationId}=viewingProfile;
-    // FIX: always search all joined nations so Top 5s are found correctly
     const sourceNations=nationId?[nations[nationId]].filter(Boolean):myNations;
     const memberRecs=sourceNations.flatMap(n=>Object.entries(n?.recs||{}).filter(([,r])=>r.from===member).map(([fbid,r])=>({...r,_fbid:fbid,_nname:n.name,_nid:n.id})));
     const memberTop5s=[];
     sourceNations.forEach(n=>{
       const tf=n?.topFives?.[member]||{};
-      Object.keys(tf).forEach(catId=>{
-        if(tf[catId]?.length) memberTop5s.push({catId,items:tf[catId],nationId:n.id,nationName:n.name});
-      });
+      Object.keys(tf).forEach(catId=>{if(tf[catId]?.length)memberTop5s.push({catId,items:tf[catId],nationId:n.id,nationName:n.name});});
     });
     const isMe=user?.name===member;
     return (
@@ -662,6 +787,9 @@ export default function App() {
             <span key={n.id} style={{background:"#1a1d30",borderRadius:8,padding:"4px 10px",fontSize:11,fontFamily:"sans-serif",color:"#666"}}>{n.name}</span>
           ))}
         </div>
+        {isMe&&(
+          <button onClick={handleSignOut} style={{...S.btnSec,fontSize:12,marginBottom:24,width:"auto",padding:"8px 16px"}}>Sign out</button>
+        )}
         {memberTop5s.length>0&&(
           <div style={{marginBottom:24}}>
             <SectionHeading>Top 5 Lists</SectionHeading>
@@ -721,7 +849,7 @@ export default function App() {
     );
   }
 
-  // ── Top 5 detail ──────────────────────────────────────────────────────────
+  // ── Top 5 detail ──
   if(viewingTop5){
     const{member,nationId,category}=viewingTop5;
     const items=nations[nationId]?.topFives?.[member]?.[category]||[];
@@ -743,8 +871,8 @@ export default function App() {
     );
   }
 
-  // ── Rec detail ────────────────────────────────────────────────────────────
-  if(viewingRec && liveRec){
+  // ── Rec detail ──
+  if(viewingRec&&liveRec){
     const cat=CAT_MAP[liveRec.category]||CATEGORIES[0];
     return (
       <RecDetailView
@@ -762,10 +890,11 @@ export default function App() {
     );
   }
 
-  if(screen==="welcome") return <WelcomeScreen onStart={()=>setScreen("signup")}/>;
-  if(screen==="signup")  return <SignupScreen name={signupName} setName={setSignupName} onSubmit={handleSignup}/>;
+  // ── Auth screens ──
+  if(screen==="welcome") return <WelcomeScreen onStart={()=>setScreen("auth")}/>;
+  if(screen==="auth")    return <AuthScreen onAuth={()=>setScreen("nations")}/>;
 
-  // ── Nations screen ────────────────────────────────────────────────────────
+  // ── Nations screen ──
   if(screen==="nations") return (
     <div style={{minHeight:"100vh",background:"#0d0f1a",fontFamily:"'Georgia',serif",color:"#f0eee8"}}>
       <div style={{maxWidth:480,margin:"0 auto",padding:"40px 22px 100px"}}>
@@ -812,7 +941,7 @@ export default function App() {
     </div>
   );
 
-  // ── Main feed ─────────────────────────────────────────────────────────────
+  // ── Main feed ──
   return (
     <div style={{minHeight:"100vh",background:"#0d0f1a",color:"#f0eee8",fontFamily:"'Georgia',serif"}}>
       <header style={{background:"#0d0f1acc",backdropFilter:"blur(14px)",position:"sticky",top:0,zIndex:50,borderBottom:"1px solid #1a1d30"}}>
