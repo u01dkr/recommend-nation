@@ -608,16 +608,21 @@ export default function App() {
     const unsub = onAuthStateChanged(auth, async firebaseUser => {
       if(firebaseUser) {
         setAuthUser(firebaseUser);
-        // Load user profile from database
         const snap = await get(ref(db, `users/${firebaseUser.uid}`));
         if(snap.exists()) {
           const profile = snap.val();
           setUser({name: profile.name, uid: firebaseUser.uid});
           const ids = profile.nationIds ? Object.keys(profile.nationIds) : [];
           setMyNIds(ids);
-          // Load saved recs from database
           const savedSnap = await get(ref(db, `users/${firebaseUser.uid}/savedRecs`));
           if(savedSnap.exists()) setSavedRecs(savedSnap.val()||{});
+        } else {
+          const name = firebaseUser.displayName || firebaseUser.email.split("@")[0];
+          await set(ref(db, `users/${firebaseUser.uid}`), {
+            name, email: firebaseUser.email, nationIds: {}
+          });
+          setUser({name, uid: firebaseUser.uid});
+          setMyNIds([]);
         }
         setScreen("nations");
       } else {
