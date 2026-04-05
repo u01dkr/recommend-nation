@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { db, auth } from "../lib/firebase";
-import { ref, onValue, set, push, update, get } from "firebase/database";
+import { ref, onValue, set, push, update, get, remove } from "firebase/database";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -381,14 +381,17 @@ function RecCard({rec,user,onLike,onSave,showNation,onProfileClick,onOpen}) {
 }
 
 // ─── Rec Detail View ──────────────────────────────────────────────────────────
-function RecDetailView({rec,cat,nationName,user,onBack,onLike,onSave,onComment,onEdit,onProfileClick}) {
+function RecDetailView({rec,cat,nationName,user,onBack,onLike,onSave,onComment,onEdit,onDelete,onDeleteComment,onEditComment,onProfileClick}) {
   const [commentText,setCommentText]=useState("");
   const [editing,setEditing]=useState(false);
+  const [editingCommentId,setEditingCommentId]=useState(null);
+  const [editingCommentText,setEditingCommentText]=useState("");
+  const [confirmDelete,setConfirmDelete]=useState(false);
   const bottomRef=useRef(null);
   const inputRef=useRef(null);
   const liked=user&&(rec.likes||{})[user.name];
   const likeCount=Object.keys(rec.likes||{}).length;
-  const comments=Object.values(rec.comments||{}).sort((a,b)=>a.ts-b.ts);
+  const comments=Object.entries(rec.comments||{}).map(([id,c])=>({...c,_cid:id})).sort((a,b)=>a.ts-b.ts);
   const av=rec.from?.[0]?.toUpperCase()||"?";
   const isOwner=user?.name===rec.from;
 
@@ -417,7 +420,22 @@ function RecDetailView({rec,cat,nationName,user,onBack,onLike,onSave,onComment,o
           <div style={{fontSize:11,color:"#555",fontFamily:"sans-serif"}}>{cat.emoji} {cat.label}{nationName?` · ${nationName}`:""}</div>
         </div>
         {isOwner&&(
-          <button onClick={()=>setEditing(true)} style={{background:"#1a1d30",border:"1px solid #272b42",borderRadius:8,padding:"5px 12px",fontSize:11,fontFamily:"sans-serif",fontWeight:700,color:"#e8c547",cursor:"pointer",flexShrink:0}}>Edit</button>
+          <div style={{display:"flex",gap:6}}>
+            <button onClick={()=>setEditing(true)} style={{background:"#1a1d30",border:"1px solid #272b42",borderRadius:8,padding:"5px 12px",fontSize:11,fontFamily:"sans-serif",fontWeight:700,color:"#e8c547",cursor:"pointer"}}>Edit</button>
+            <button onClick={()=>setConfirmDelete(true)} style={{background:"#1a1d30",border:"1px solid #272b42",borderRadius:8,padding:"5px 12px",fontSize:11,fontFamily:"sans-serif",fontWeight:700,color:"#e87a7a",cursor:"pointer"}}>Delete</button>
+          </div>
+        )}
+        {confirmDelete&&(
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:300,padding:24}}>
+            <div style={{background:"#13162a",borderRadius:16,padding:24,maxWidth:320,width:"100%",border:"1px solid #1a1d30"}}>
+              <h3 style={{margin:"0 0 8px",fontSize:18,fontWeight:700}}>Delete this rec?</h3>
+              <p style={{margin:"0 0 20px",fontSize:13,color:"#666",fontFamily:"sans-serif"}}>This can't be undone.</p>
+              <div style={{display:"flex",gap:10}}>
+                <button onClick={()=>setConfirmDelete(false)} style={{...S.btnSec,flex:1,padding:"10px"}}>Cancel</button>
+                <button onClick={onDelete} style={{flex:1,background:"#e87a7a",color:"#0d0f1a",border:"none",borderRadius:12,padding:"10px",fontSize:14,fontWeight:700,cursor:"pointer"}}>Delete</button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
       <div style={{flex:1,overflowY:"auto",padding:"0 0 120px"}}>
@@ -457,21 +475,41 @@ function RecDetailView({rec,cat,nationName,user,onBack,onLike,onSave,onComment,o
                 {comments.map((c,i)=>{
                   const isMe=user?.name===c.from;
                   const cav=c.from?.[0]?.toUpperCase()||"?";
+                  const isEditingThis=editingCommentId===c._cid;
                   return (
-                    <div key={c.id||i} className="comment-bubble" style={{animationDelay:`${i*40}ms`,display:"flex",gap:10,marginBottom:16,flexDirection:isMe?"row-reverse":"row"}}>
+                    <div key={c._cid||i} className="comment-bubble" style={{animationDelay:`${i*40}ms`,display:"flex",gap:10,marginBottom:16,flexDirection:isMe?"row-reverse":"row"}}>
                       <div onClick={()=>onProfileClick(c.from)} className="av-tap"
                         style={{width:30,height:30,borderRadius:"50%",background:avatarColor(cav),display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#fff",fontWeight:700,fontFamily:"sans-serif",flexShrink:0,marginTop:2}}>{cav}</div>
                       <div style={{maxWidth:"75%"}}>
-                        <div style={{fontSize:11,color:"#555",fontFamily:"sans-serif",marginBottom:4,textAlign:isMe?"right":"left"}}>
+                        <div style={{fontSize:11,color:"#555",fontFamily:"sans-serif",marginBottom:4,textAlign:isMe?"right":"left",display:"flex",alignItems:"center",gap:8,flexDirection:isMe?"row-reverse":"row"}}>
                           <span onClick={()=>onProfileClick(c.from)} style={{cursor:"pointer"}}
                             onMouseEnter={e=>e.target.style.color="#e8c547"} onMouseLeave={e=>e.target.style.color="#555"}>
                             {isMe?"You":c.from}
                           </span>
-                          <span style={{marginLeft:6,opacity:0.5}}>{timeAgo(c.ts)}</span>
+                          <span style={{opacity:0.5}}>{timeAgo(c.ts)}{c.edited?" · edited":""}</span>
+                          {isMe&&!isEditingThis&&(
+                            <span style={{display:"flex",gap:6}}>
+                              <button onClick={()=>{setEditingCommentId(c._cid);setEditingCommentText(c.text);}} style={{background:"none",border:"none",cursor:"pointer",color:"#555",fontSize:10,fontFamily:"sans-serif",padding:0}}>Edit</button>
+                              <button onClick={()=>onDeleteComment(c._cid)} style={{background:"none",border:"none",cursor:"pointer",color:"#e87a7a",fontSize:10,fontFamily:"sans-serif",padding:0}}>Delete</button>
+                            </span>
+                          )}
                         </div>
-                        <div style={{background:isMe?"#1e2a4a":"#1a1d30",borderRadius:isMe?"14px 4px 14px 14px":"4px 14px 14px 14px",padding:"10px 14px",fontSize:14,lineHeight:1.55,color:"#e8e6f0",border:`1px solid ${isMe?"#2a3a5a":"#272b42"}`}}>
-                          {c.text}
-                        </div>
+                        {isEditingThis?(
+                          <div style={{display:"flex",gap:6}}>
+                            <textarea value={editingCommentText} onChange={e=>setEditingCommentText(e.target.value)}
+                              style={{...S.input,resize:"none",fontSize:13,padding:"8px 12px",borderRadius:12,flex:1}}
+                              onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();onEditComment(c._cid,editingCommentText);setEditingCommentId(null);}}}
+                              rows={2}/>
+                            <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                              <button onClick={()=>{onEditComment(c._cid,editingCommentText);setEditingCommentId(null);}} style={{background:"#e8c547",color:"#0d0f1a",border:"none",borderRadius:8,padding:"6px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}}>Save</button>
+                              <button onClick={()=>setEditingCommentId(null)} style={{background:"#1a1d30",color:"#666",border:"none",borderRadius:8,padding:"6px 10px",fontSize:11,cursor:"pointer"}}>Cancel</button>
+                            </div>
+                          </div>
+                        ):(
+                          <div style={{background:isMe?"#1e2a4a":"#1a1d30",borderRadius:isMe?"14px 4px 14px 14px":"4px 14px 14px 14px",padding:"10px 14px",fontSize:14,lineHeight:1.55,color:"#e8e6f0",border:`1px solid ${isMe?"#2a3a5a":"#272b42"}`}}>
+                            {c.text}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -611,7 +649,8 @@ export default function App() {
         const snap = await get(ref(db, `users/${firebaseUser.uid}`));
         if(snap.exists()) {
           const profile = snap.val();
-          setUser({name: profile.name, uid: firebaseUser.uid});
+          const name = profile.name || firebaseUser.displayName || firebaseUser.email.split("@")[0];
+          setUser({name, uid: firebaseUser.uid});
           const ids = profile.nationIds ? Object.keys(profile.nationIds) : [];
           setMyNIds(ids);
           const savedSnap = await get(ref(db, `users/${firebaseUser.uid}/savedRecs`));
@@ -671,23 +710,50 @@ export default function App() {
   function closeModal(){setModal(null);setJoinCode("");setJoinError("");setCreatedCode(null);}
 
   async function handleJoin(){
+    setJoinError("");
     const code=joinCode.trim().toUpperCase();
-    const snap=await get(ref(db,`nations/${code}`));
-    if(snap.exists()){
-      if(myNationIds.includes(code)){setJoinError("You're already in this Nation!");return;}
-      await update(ref(db,`nations/${code}/members`),{[user.name]:true});
-      await update(ref(db,`users/${authUser.uid}/nationIds`),{[code]:true});
-      const newIds=[...myNationIds,code];
-      setMyNIds(newIds);
-      setJoinCode("");setJoinError("");closeModal();
-      setActiveNId(code);setScreen("feed");
-    }else{setJoinError("No Nation found with that code.");}
+    if(!code){setJoinError("Please enter a code.");return;}
+    try {
+      const snap=await get(ref(db,`nations/${code}`));
+      if(snap.exists()){
+        if(myNationIds.includes(code)){setJoinError("You're already in this Nation!");return;}
+        const userName = user?.name || auth.currentUser?.displayName || "Member";
+        const uid = authUser?.uid || auth.currentUser?.uid;
+        // Add member to nation
+        await update(ref(db,`nations/${code}/members`),{[userName]:true});
+        // Update user profile with new nation
+        if(uid) {
+          const existingIds = Object.fromEntries(myNationIds.map(id=>[id,true]));
+          await set(ref(db,`users/${uid}`),{
+            name: userName,
+            email: auth.currentUser?.email || "",
+            nationIds: {...existingIds,[code]:true}
+          });
+        }
+        const newIds=[...myNationIds,code];
+        setMyNIds(newIds);
+        setJoinCode("");
+        setJoinError("");
+        closeModal();
+        setActiveNId(code);
+        setScreen("feed");
+      }else{
+        setJoinError("No Nation found with that code.");
+      }
+    } catch(e) {
+      setJoinError("Something went wrong: " + (e.message||"please try again"));
+    }
   }
 
   async function handleCreateNation(){
-    if(!newNationName.trim())return;
+    if(!newNationName.trim()||!authUser||!user)return;
     const code=generateCode();
     await set(ref(db,`nations/${code}`),{id:code,name:newNationName.trim(),code,members:{[user.name]:true},recs:{},topFives:{}});
+    // Ensure user profile exists before writing nationIds
+    await update(ref(db,`users/${authUser.uid}`),{
+      name: user.name,
+      email: authUser.email,
+    });
     await update(ref(db,`users/${authUser.uid}/nationIds`),{[code]:true});
     const newIds=[...myNationIds,code];
     setMyNIds(newIds);
@@ -753,6 +819,37 @@ export default function App() {
     setMyNIds([]);
     setActiveNId(null);
     setSavedRecs({});
+  }
+
+  async function handleLeaveNation(nationId){
+    if(!authUser||!user) return;
+    // Remove user from nation members
+    await remove(ref(db,`nations/${nationId}/members/${user.name}`));
+    // Remove nation from user profile
+    await remove(ref(db,`users/${authUser.uid}/nationIds/${nationId}`));
+    const newIds = myNationIds.filter(id=>id!==nationId);
+    setMyNIds(newIds);
+    setNations(prev=>{ const n={...prev}; delete n[nationId]; return n; });
+    if(activeNId===nationId){ setActiveNId(null); setScreen("feed"); }
+  }
+
+  async function handleDeleteRec(rec){
+    await remove(ref(db,`nations/${rec._nid}/recs/${rec._fbid}`));
+    setViewingRec(null);
+  }
+
+  async function handleDeleteTop5(nationId, member, catId){
+    await remove(ref(db,`nations/${nationId}/topFives/${member}/${catId}`));
+    setEditingTop5(null);
+    setViewingTop5(null);
+  }
+
+  async function handleDeleteComment(rec, commentId){
+    await remove(ref(db,`nations/${rec._nid}/recs/${rec._fbid}/comments/${commentId}`));
+  }
+
+  async function handleEditComment(rec, commentId, newText){
+    await update(ref(db,`nations/${rec._nid}/recs/${rec._fbid}/comments/${commentId}`),{text:newText,edited:true});
   }
 
   // ── Loading state ──
@@ -859,11 +956,27 @@ export default function App() {
     const{member,nationId,category}=viewingTop5;
     const items=nations[nationId]?.topFives?.[member]?.[category]||[];
     const cat=CAT_MAP[category];
+    const isOwn=user?.name===member;
+    const [confirmDeleteTop5,setConfirmDeleteTop5]=useState(false);
     return (
       <FullPage onBack={()=>setViewingTop5(null)}>
-        <div style={{fontSize:11,letterSpacing:"0.2em",textTransform:"uppercase",color:cat.color,marginBottom:6,fontFamily:"sans-serif",fontWeight:700}}>{cat.emoji} {cat.label}</div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+          <div style={{fontSize:11,letterSpacing:"0.2em",textTransform:"uppercase",color:cat.color,fontFamily:"sans-serif",fontWeight:700}}>{cat.emoji} {cat.label}</div>
+          {isOwn&&(
+            <button onClick={()=>setConfirmDeleteTop5(true)} style={{background:"none",border:"none",cursor:"pointer",color:"#e87a7a",fontSize:12,fontFamily:"sans-serif"}}>Delete</button>
+          )}
+        </div>
         <h1 style={{fontSize:28,fontWeight:700,letterSpacing:"-1px",margin:"0 0 4px",fontStyle:"italic"}}>{member}'s Top 5</h1>
         <p style={{color:"#444",fontSize:13,fontFamily:"sans-serif",marginBottom:28}}>{nations[nationId]?.name}</p>
+        {confirmDeleteTop5&&(
+          <div style={{background:"#1a1d30",borderRadius:12,padding:16,marginBottom:20,border:"1px solid #272b42"}}>
+            <p style={{margin:"0 0 12px",fontSize:13,fontFamily:"sans-serif",color:"#f0eee8"}}>Delete this Top 5 list? This can't be undone.</p>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setConfirmDeleteTop5(false)} style={{...S.btnSec,flex:1,padding:"8px"}}>Cancel</button>
+              <button onClick={()=>handleDeleteTop5(nationId,member,category)} style={{flex:1,background:"#e87a7a",color:"#0d0f1a",border:"none",borderRadius:10,padding:"8px",fontSize:13,fontWeight:700,cursor:"pointer"}}>Delete</button>
+            </div>
+          </div>
+        )}
         <ol style={{margin:0,padding:0,listStyle:"none",display:"flex",flexDirection:"column",gap:9}}>
           {items.map((item,i)=>(
             <li key={i} style={{display:"flex",alignItems:"center",gap:16,background:"#13162a",borderRadius:12,padding:"14px 18px",border:"1px solid #1a1d30"}}>
@@ -890,6 +1003,9 @@ export default function App() {
         onSave={()=>toggleSave(liveRec)}
         onComment={text=>addComment(liveRec,text)}
         onEdit={form=>handleEditRec(liveRec,form)}
+        onDelete={()=>handleDeleteRec(liveRec)}
+        onDeleteComment={cid=>handleDeleteComment(liveRec,cid)}
+        onEditComment={(cid,text)=>handleEditComment(liveRec,cid,text)}
         onProfileClick={member=>setViewingProfile({member,nationId:liveRec._nid})}
       />
     );
@@ -915,20 +1031,59 @@ export default function App() {
           </div>
         )}
         <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:18}}>
-          {myNations.map(n=>(
-            <div key={n.id} onClick={()=>{setActiveNId(n.id);setScreen("feed");}}
-              style={{background:"#13162a",borderRadius:14,padding:"16px 18px",cursor:"pointer",border:"1px solid #1a1d30",display:"flex",justifyContent:"space-between",alignItems:"center",transition:"background 0.15s"}}
-              onMouseEnter={e=>e.currentTarget.style.background="#1a1d30"}
-              onMouseLeave={e=>e.currentTarget.style.background="#13162a"}>
-              <div>
-                <div style={{fontSize:16,fontWeight:700,letterSpacing:"-0.3px"}}>{n.name}</div>
-                <div style={{fontSize:11,color:"#444",fontFamily:"sans-serif",marginTop:3}}>
-                  {Object.keys(n.members||{}).length} members · <span style={{color:"#e8c547",letterSpacing:"0.1em",fontWeight:700}}>{n.code}</span> · {Object.keys(n.recs||{}).length} recs
+          {myNations.map(n=>{
+            const members=Object.keys(n.members||{});
+            const [expanded,setExpanded]=useState(false);
+            const [confirmLeave,setConfirmLeave]=useState(false);
+            return (
+              <div key={n.id} style={{background:"#13162a",borderRadius:14,border:"1px solid #1a1d30",overflow:"hidden"}}>
+                <div onClick={()=>{setActiveNId(n.id);setScreen("feed");}}
+                  style={{padding:"16px 18px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",transition:"background 0.15s"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="#1a1d30"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div>
+                    <div style={{fontSize:16,fontWeight:700,letterSpacing:"-0.3px"}}>{n.name}</div>
+                    <div style={{fontSize:11,color:"#444",fontFamily:"sans-serif",marginTop:3}}>
+                      {members.length} members · <span style={{color:"#e8c547",letterSpacing:"0.1em",fontWeight:700}}>{n.code}</span> · {Object.keys(n.recs||{}).length} recs
+                    </div>
+                  </div>
+                  <span style={{color:"#e8c547"}}>→</span>
                 </div>
+                <div style={{padding:"0 18px 12px",display:"flex",gap:8,alignItems:"center"}}>
+                  <button onClick={e=>{e.stopPropagation();setExpanded(!expanded);}}
+                    style={{background:"#1a1d30",border:"none",borderRadius:8,padding:"5px 10px",fontSize:11,fontFamily:"sans-serif",color:"#666",cursor:"pointer"}}>
+                    {expanded?"Hide members":"See members"}
+                  </button>
+                  <button onClick={e=>{e.stopPropagation();setConfirmLeave(true);}}
+                    style={{background:"#1a1d30",border:"none",borderRadius:8,padding:"5px 10px",fontSize:11,fontFamily:"sans-serif",color:"#e87a7a",cursor:"pointer"}}>
+                    Leave
+                  </button>
+                </div>
+                {expanded&&(
+                  <div style={{padding:"0 18px 14px",display:"flex",flexWrap:"wrap",gap:8}}>
+                    {members.map(m=>(
+                      <div key={m} onClick={()=>setViewingProfile({member:m,nationId:n.id})}
+                        style={{display:"flex",alignItems:"center",gap:6,background:"#0d0f1a",borderRadius:20,padding:"5px 10px",cursor:"pointer"}}>
+                        <div style={{width:20,height:20,borderRadius:"50%",background:avatarColor(m[0]),display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff",fontWeight:700,fontFamily:"sans-serif"}}>{m[0]}</div>
+                        <span style={{fontSize:12,fontFamily:"sans-serif",color:"#aaa"}}>{m}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {confirmLeave&&(
+                  <div style={{padding:"0 18px 16px"}}>
+                    <div style={{background:"#0d0f1a",borderRadius:10,padding:14,border:"1px solid #272b42"}}>
+                      <p style={{margin:"0 0 10px",fontSize:13,fontFamily:"sans-serif",color:"#f0eee8"}}>Leave <strong>{n.name}</strong>? You can rejoin with the code.</p>
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={()=>setConfirmLeave(false)} style={{...S.btnSec,flex:1,padding:"8px",fontSize:12}}>Cancel</button>
+                        <button onClick={()=>handleLeaveNation(n.id)} style={{flex:1,background:"#e87a7a",color:"#0d0f1a",border:"none",borderRadius:10,padding:"8px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Leave</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <span style={{color:"#e8c547"}}>→</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:9}}>
           <button onClick={()=>setModal("createNation")} style={S.btn}>✦ Create a new Nation</button>
