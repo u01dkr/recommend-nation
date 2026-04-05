@@ -618,6 +618,98 @@ function Top5Tab({myNations,activeNId,nations,onView,onAdd,onEdit,user,onProfile
   );
 }
 
+// ─── Nation Card (proper component so hooks work in list) ────────────────────
+function NationCard({n,user,onEnter,onLeave,onViewProfile}) {
+  const [expanded,setExpanded] = useState(false);
+  const [confirmLeave,setConfirmLeave] = useState(false);
+  const members = Object.keys(n.members||{});
+  return (
+    <div style={{background:"#13162a",borderRadius:14,border:"1px solid #1a1d30",overflow:"hidden"}}>
+      <div onClick={onEnter}
+        style={{padding:"16px 18px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",transition:"background 0.15s"}}
+        onMouseEnter={e=>e.currentTarget.style.background="#1a1d30"}
+        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+        <div>
+          <div style={{fontSize:16,fontWeight:700,letterSpacing:"-0.3px"}}>{n.name}</div>
+          <div style={{fontSize:11,color:"#444",fontFamily:"sans-serif",marginTop:3}}>
+            {members.length} members · <span style={{color:"#e8c547",letterSpacing:"0.1em",fontWeight:700}}>{n.code}</span> · {Object.keys(n.recs||{}).length} recs
+          </div>
+        </div>
+        <span style={{color:"#e8c547"}}>→</span>
+      </div>
+      <div style={{padding:"0 18px 12px",display:"flex",gap:8,alignItems:"center"}}>
+        <button onClick={e=>{e.stopPropagation();setExpanded(!expanded);}}
+          style={{background:"#1a1d30",border:"none",borderRadius:8,padding:"5px 10px",fontSize:11,fontFamily:"sans-serif",color:"#666",cursor:"pointer"}}>
+          {expanded?"Hide members":"See members"}
+        </button>
+        <button onClick={e=>{e.stopPropagation();setConfirmLeave(true);}}
+          style={{background:"#1a1d30",border:"none",borderRadius:8,padding:"5px 10px",fontSize:11,fontFamily:"sans-serif",color:"#e87a7a",cursor:"pointer"}}>
+          Leave
+        </button>
+      </div>
+      {expanded&&(
+        <div style={{padding:"0 18px 14px",display:"flex",flexWrap:"wrap",gap:8}}>
+          {members.map(m=>(
+            <div key={m} onClick={()=>onViewProfile(m)}
+              style={{display:"flex",alignItems:"center",gap:6,background:"#0d0f1a",borderRadius:20,padding:"5px 10px",cursor:"pointer"}}>
+              <div style={{width:20,height:20,borderRadius:"50%",background:avatarColor(m[0]),display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff",fontWeight:700,fontFamily:"sans-serif"}}>{m[0]}</div>
+              <span style={{fontSize:12,fontFamily:"sans-serif",color:"#aaa"}}>{m}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {confirmLeave&&(
+        <div style={{padding:"0 18px 16px"}}>
+          <div style={{background:"#0d0f1a",borderRadius:10,padding:14,border:"1px solid #272b42"}}>
+            <p style={{margin:"0 0 10px",fontSize:13,fontFamily:"sans-serif",color:"#f0eee8"}}>Leave <strong>{n.name}</strong>? You can rejoin with the code.</p>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setConfirmLeave(false)} style={{background:"transparent",color:"#666",border:"1px solid #272b42",borderRadius:10,padding:"8px",fontSize:12,cursor:"pointer",flex:1}}>Cancel</button>
+              <button onClick={onLeave} style={{flex:1,background:"#e87a7a",color:"#0d0f1a",border:"none",borderRadius:10,padding:"8px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Leave</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Top 5 Detail View (proper component so hooks work in conditional) ────────
+function Top5DetailView({member,nationId,category,nations,user,onBack,onDelete}) {
+  const [confirmDelete,setConfirmDelete] = useState(false);
+  const items = nations[nationId]?.topFives?.[member]?.[category]||[];
+  const cat = CAT_MAP[category];
+  const isOwn = user?.name===member;
+  return (
+    <FullPage onBack={onBack}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+        <div style={{fontSize:11,letterSpacing:"0.2em",textTransform:"uppercase",color:cat.color,fontFamily:"sans-serif",fontWeight:700}}>{cat.emoji} {cat.label}</div>
+        {isOwn&&(
+          <button onClick={()=>setConfirmDelete(true)} style={{background:"none",border:"none",cursor:"pointer",color:"#e87a7a",fontSize:12,fontFamily:"sans-serif"}}>Delete</button>
+        )}
+      </div>
+      <h1 style={{fontSize:28,fontWeight:700,letterSpacing:"-1px",margin:"0 0 4px",fontStyle:"italic"}}>{member}'s Top 5</h1>
+      <p style={{color:"#444",fontSize:13,fontFamily:"sans-serif",marginBottom:28}}>{nations[nationId]?.name}</p>
+      {confirmDelete&&(
+        <div style={{background:"#1a1d30",borderRadius:12,padding:16,marginBottom:20,border:"1px solid #272b42"}}>
+          <p style={{margin:"0 0 12px",fontSize:13,fontFamily:"sans-serif",color:"#f0eee8"}}>Delete this Top 5 list? This can't be undone.</p>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setConfirmDelete(false)} style={{background:"transparent",color:"#666",border:"1px solid #272b42",borderRadius:10,padding:"8px",fontSize:12,cursor:"pointer",flex:1}}>Cancel</button>
+            <button onClick={()=>onDelete(nationId,member,category)} style={{flex:1,background:"#e87a7a",color:"#0d0f1a",border:"none",borderRadius:10,padding:"8px",fontSize:13,fontWeight:700,cursor:"pointer"}}>Delete</button>
+          </div>
+        </div>
+      )}
+      <ol style={{margin:0,padding:0,listStyle:"none",display:"flex",flexDirection:"column",gap:9}}>
+        {items.map((item,i)=>(
+          <li key={i} style={{display:"flex",alignItems:"center",gap:16,background:"#13162a",borderRadius:12,padding:"14px 18px",border:"1px solid #1a1d30"}}>
+            <span style={{fontSize:20,fontWeight:700,color:i<3?cat.color:"#2e3450",minWidth:26,textAlign:"right",fontStyle:"italic"}}>{i+1}</span>
+            <span style={{fontSize:15}}>{item}</span>
+          </li>
+        ))}
+      </ol>
+    </FullPage>
+  );
+}
+
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [authUser,setAuthUser]  = useState(undefined); // undefined = loading, null = not logged in
@@ -953,39 +1045,16 @@ export default function App() {
 
   // ── Top 5 detail ──
   if(viewingTop5){
-    const{member,nationId,category}=viewingTop5;
-    const items=nations[nationId]?.topFives?.[member]?.[category]||[];
-    const cat=CAT_MAP[category];
-    const isOwn=user?.name===member;
-    const [confirmDeleteTop5,setConfirmDeleteTop5]=useState(false);
     return (
-      <FullPage onBack={()=>setViewingTop5(null)}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-          <div style={{fontSize:11,letterSpacing:"0.2em",textTransform:"uppercase",color:cat.color,fontFamily:"sans-serif",fontWeight:700}}>{cat.emoji} {cat.label}</div>
-          {isOwn&&(
-            <button onClick={()=>setConfirmDeleteTop5(true)} style={{background:"none",border:"none",cursor:"pointer",color:"#e87a7a",fontSize:12,fontFamily:"sans-serif"}}>Delete</button>
-          )}
-        </div>
-        <h1 style={{fontSize:28,fontWeight:700,letterSpacing:"-1px",margin:"0 0 4px",fontStyle:"italic"}}>{member}'s Top 5</h1>
-        <p style={{color:"#444",fontSize:13,fontFamily:"sans-serif",marginBottom:28}}>{nations[nationId]?.name}</p>
-        {confirmDeleteTop5&&(
-          <div style={{background:"#1a1d30",borderRadius:12,padding:16,marginBottom:20,border:"1px solid #272b42"}}>
-            <p style={{margin:"0 0 12px",fontSize:13,fontFamily:"sans-serif",color:"#f0eee8"}}>Delete this Top 5 list? This can't be undone.</p>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>setConfirmDeleteTop5(false)} style={{...S.btnSec,flex:1,padding:"8px"}}>Cancel</button>
-              <button onClick={()=>handleDeleteTop5(nationId,member,category)} style={{flex:1,background:"#e87a7a",color:"#0d0f1a",border:"none",borderRadius:10,padding:"8px",fontSize:13,fontWeight:700,cursor:"pointer"}}>Delete</button>
-            </div>
-          </div>
-        )}
-        <ol style={{margin:0,padding:0,listStyle:"none",display:"flex",flexDirection:"column",gap:9}}>
-          {items.map((item,i)=>(
-            <li key={i} style={{display:"flex",alignItems:"center",gap:16,background:"#13162a",borderRadius:12,padding:"14px 18px",border:"1px solid #1a1d30"}}>
-              <span style={{fontSize:20,fontWeight:700,color:i<3?cat.color:"#2e3450",minWidth:26,textAlign:"right",fontStyle:"italic"}}>{i+1}</span>
-              <span style={{fontSize:15}}>{item}</span>
-            </li>
-          ))}
-        </ol>
-      </FullPage>
+      <Top5DetailView
+        member={viewingTop5.member}
+        nationId={viewingTop5.nationId}
+        category={viewingTop5.category}
+        nations={nations}
+        user={user}
+        onBack={()=>setViewingTop5(null)}
+        onDelete={(nId,m,cat)=>handleDeleteTop5(nId,m,cat)}
+      />
     );
   }
 
@@ -1031,59 +1100,13 @@ export default function App() {
           </div>
         )}
         <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:18}}>
-          {myNations.map(n=>{
-            const members=Object.keys(n.members||{});
-            const [expanded,setExpanded]=useState(false);
-            const [confirmLeave,setConfirmLeave]=useState(false);
-            return (
-              <div key={n.id} style={{background:"#13162a",borderRadius:14,border:"1px solid #1a1d30",overflow:"hidden"}}>
-                <div onClick={()=>{setActiveNId(n.id);setScreen("feed");}}
-                  style={{padding:"16px 18px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",transition:"background 0.15s"}}
-                  onMouseEnter={e=>e.currentTarget.style.background="#1a1d30"}
-                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <div>
-                    <div style={{fontSize:16,fontWeight:700,letterSpacing:"-0.3px"}}>{n.name}</div>
-                    <div style={{fontSize:11,color:"#444",fontFamily:"sans-serif",marginTop:3}}>
-                      {members.length} members · <span style={{color:"#e8c547",letterSpacing:"0.1em",fontWeight:700}}>{n.code}</span> · {Object.keys(n.recs||{}).length} recs
-                    </div>
-                  </div>
-                  <span style={{color:"#e8c547"}}>→</span>
-                </div>
-                <div style={{padding:"0 18px 12px",display:"flex",gap:8,alignItems:"center"}}>
-                  <button onClick={e=>{e.stopPropagation();setExpanded(!expanded);}}
-                    style={{background:"#1a1d30",border:"none",borderRadius:8,padding:"5px 10px",fontSize:11,fontFamily:"sans-serif",color:"#666",cursor:"pointer"}}>
-                    {expanded?"Hide members":"See members"}
-                  </button>
-                  <button onClick={e=>{e.stopPropagation();setConfirmLeave(true);}}
-                    style={{background:"#1a1d30",border:"none",borderRadius:8,padding:"5px 10px",fontSize:11,fontFamily:"sans-serif",color:"#e87a7a",cursor:"pointer"}}>
-                    Leave
-                  </button>
-                </div>
-                {expanded&&(
-                  <div style={{padding:"0 18px 14px",display:"flex",flexWrap:"wrap",gap:8}}>
-                    {members.map(m=>(
-                      <div key={m} onClick={()=>setViewingProfile({member:m,nationId:n.id})}
-                        style={{display:"flex",alignItems:"center",gap:6,background:"#0d0f1a",borderRadius:20,padding:"5px 10px",cursor:"pointer"}}>
-                        <div style={{width:20,height:20,borderRadius:"50%",background:avatarColor(m[0]),display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff",fontWeight:700,fontFamily:"sans-serif"}}>{m[0]}</div>
-                        <span style={{fontSize:12,fontFamily:"sans-serif",color:"#aaa"}}>{m}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {confirmLeave&&(
-                  <div style={{padding:"0 18px 16px"}}>
-                    <div style={{background:"#0d0f1a",borderRadius:10,padding:14,border:"1px solid #272b42"}}>
-                      <p style={{margin:"0 0 10px",fontSize:13,fontFamily:"sans-serif",color:"#f0eee8"}}>Leave <strong>{n.name}</strong>? You can rejoin with the code.</p>
-                      <div style={{display:"flex",gap:8}}>
-                        <button onClick={()=>setConfirmLeave(false)} style={{...S.btnSec,flex:1,padding:"8px",fontSize:12}}>Cancel</button>
-                        <button onClick={()=>handleLeaveNation(n.id)} style={{flex:1,background:"#e87a7a",color:"#0d0f1a",border:"none",borderRadius:10,padding:"8px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Leave</button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {myNations.map(n=>(
+            <NationCard key={n.id} n={n} user={user}
+              onEnter={()=>{setActiveNId(n.id);setScreen("feed");}}
+              onLeave={()=>handleLeaveNation(n.id)}
+              onViewProfile={(m)=>setViewingProfile({member:m,nationId:n.id})}
+            />
+          ))}
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:9}}>
           <button onClick={()=>setModal("createNation")} style={S.btn}>✦ Create a new Nation</button>
