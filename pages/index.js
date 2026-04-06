@@ -290,6 +290,23 @@ function CreatedSuccess({code,name,onDone}) {
 
 function AddRecModal({form,setForm,onSubmit,myNations,activeNId}) {
   const cat=CAT_MAP[form.category];
+  // Nation selection state — default all nations selected
+  const [selectedNations,setSelectedNations]=useState(()=>new Set(myNations.map(n=>n.id)));
+  const showPicker=!activeNId&&myNations.length>1;
+
+  function toggleNation(id){
+    setSelectedNations(prev=>{
+      const next=new Set(prev);
+      if(next.has(id)&&next.size>1) next.delete(id); // always keep at least one
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function handleSubmit(){
+    onSubmit(activeNId?null:[...selectedNations]);
+  }
+
   return (
     <div>
       <h2 style={{margin:"0 0 14px",fontSize:22,fontStyle:"italic",letterSpacing:"-0.5px",color:"#f0eee8"}}>Rec something</h2>
@@ -305,8 +322,24 @@ function AddRecModal({form,setForm,onSubmit,myNations,activeNId}) {
         <input placeholder={`${cat.fields[0]} *`} value={form.field1} onChange={e=>setForm(f=>({...f,field1:e.target.value}))} style={S.input}/>
         <input placeholder={cat.fields[1]} value={form.field2} onChange={e=>setForm(f=>({...f,field2:e.target.value}))} style={S.input}/>
         <textarea placeholder={`${cat.fields[2]} (optional)`} value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} rows={3} style={{...S.input,resize:"none",lineHeight:1.6}}/>
-        {!activeNId&&myNations.length>0&&<p style={{fontSize:12,color:"#444",fontFamily:"sans-serif",margin:0}}>Posting to <strong style={{color:"#e8c547"}}>all your Nations</strong></p>}
-        <button onClick={onSubmit} style={{...S.btn,opacity:form.field1.trim()?1:0.4,marginTop:4}}>Post Rec →</button>
+        {showPicker&&(
+          <div>
+            <div style={{fontSize:11,color:"#555",fontFamily:"sans-serif",marginBottom:6,letterSpacing:"0.05em",textTransform:"uppercase",fontWeight:700}}>Post to</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {myNations.map(n=>{
+                const on=selectedNations.has(n.id);
+                return (
+                  <button key={n.id} onClick={()=>toggleNation(n.id)}
+                    style={{background:on?"#e8c547":"#1a1d30",color:on?"#0d0f1a":"#555",border:`1px solid ${on?"#e8c547":"#272b42"}`,borderRadius:20,padding:"5px 12px",fontSize:12,fontFamily:"sans-serif",fontWeight:700,cursor:"pointer",transition:"all 0.15s",display:"flex",alignItems:"center",gap:5}}>
+                    {on&&<span style={{fontSize:10}}>✓</span>}
+                    {nationPillLabel(n.name)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        <button onClick={handleSubmit} style={{...S.btn,opacity:form.field1.trim()?1:0.4,marginTop:4}}>Post Rec →</button>
       </div>
     </div>
   );
@@ -852,9 +885,10 @@ export default function App() {
     setCreatedCode(code);setNewNationName("");
   }
 
-  async function handleAddRec(){
+  async function handleAddRec(selectedIds){
     if(!recForm.field1.trim())return;
-    const targetIds=activeNId?[activeNId]:myNationIds;
+    // selectedIds is null when posting to a specific activeNId, or an array of chosen nation ids
+    const targetIds = activeNId ? [activeNId] : (selectedIds || myNationIds);
     for(const tid of targetIds){
       await push(ref(db,`nations/${tid}/recs`),{category:recForm.category,field1:recForm.field1,field2:recForm.field2,note:recForm.note,from:user.name,ts:Date.now(),likes:{},comments:{}});
     }
@@ -1238,7 +1272,7 @@ export default function App() {
 
       {modal&&(
         <ModalSheet onClose={closeModal}>
-          {modal==="addRec"&&<AddRecModal form={recForm} setForm={setRecForm} onSubmit={handleAddRec} myNations={myNations} activeNId={activeNId}/>}
+          {modal==="addRec"&&<AddRecModal form={recForm} setForm={setRecForm} onSubmit={(ids)=>handleAddRec(ids)} myNations={myNations} activeNId={activeNId}/>}
           {modal==="joinNation"&&<JoinModal joinCode={joinCode} setJoinCode={setJoinCode} joinError={joinError} onJoin={handleJoin}/>}
           {modal==="createNation"&&!createdCode&&<CreateModal name={newNationName} setName={setNewNationName} onCreate={handleCreateNation}/>}
           {modal==="createNation"&&createdCode&&<CreatedSuccess code={createdCode} name={nations[createdCode]?.name} onDone={()=>{closeModal();setActiveNId(createdCode);setScreen("feed");}}/>}
