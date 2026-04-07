@@ -1071,9 +1071,13 @@ export default function App() {
           ))}
         </div>
         {isMe&&(
-          <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>
-            <button onClick={handleSignOut} style={{...S.btnSec,fontSize:12,width:"auto",padding:"8px 16px"}}>Sign out</button>
-            <DeleteAccountButton onDelete={handleDeleteAccount}/>
+          <div style={{marginBottom:24}}>
+            <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+              <button onClick={handleSignOut} style={{...S.btnSec,fontSize:12,width:"auto",padding:"8px 16px"}}>Sign out</button>
+              <DeleteAccountButton onDelete={handleDeleteAccount}/>
+            </div>
+            <a href="/privacy" target="_blank" rel="noopener noreferrer"
+              style={{fontSize:11,color:"#444",fontFamily:"sans-serif",textDecoration:"underline"}}>Privacy Policy</a>
           </div>
         )}
         {memberTop5s.length>0&&(
