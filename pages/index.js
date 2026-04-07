@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { db, auth } from "../lib/firebase";
+import { db, auth, requestNotificationPermission } from "../lib/firebase";
 import { ref, onValue, set, push, update, get, remove } from "firebase/database";
 import {
   createUserWithEmailAndPassword,
@@ -664,6 +664,33 @@ function Top5Tab({myNations,activeNId,nations,onView,onAdd,onEdit,user,onProfile
   );
 }
 
+// ─── Notification Button ─────────────────────────────────────────────────────
+function NotificationButton({status,onEnable}) {
+  if(typeof window !== "undefined" && !("Notification" in window)) return null;
+  if(status==="granted" || (typeof window !== "undefined" && Notification.permission==="granted")) {
+    return (
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+        <span style={{fontSize:14}}>🔔</span>
+        <span style={{fontSize:12,fontFamily:"sans-serif",color:"#7ae8a0"}}>Notifications enabled</span>
+      </div>
+    );
+  }
+  if(status==="denied" || (typeof window !== "undefined" && Notification.permission==="denied")) {
+    return (
+      <div style={{marginBottom:8}}>
+        <span style={{fontSize:12,fontFamily:"sans-serif",color:"#e87a7a"}}>Notifications blocked — please enable in browser settings</span>
+      </div>
+    );
+  }
+  return (
+    <button onClick={onEnable} disabled={status==="requesting"}
+      style={{background:"#1a1d30",border:"1px solid #272b42",borderRadius:10,padding:"8px 14px",fontSize:12,fontFamily:"sans-serif",color:"#e8c547",cursor:"pointer",marginBottom:8,display:"flex",alignItems:"center",gap:6,transition:"all 0.15s"}}>
+      <span style={{fontSize:14}}>🔔</span>
+      {status==="requesting"?"Enabling…":"Enable notifications"}
+    </button>
+  );
+}
+
 // ─── Delete Account Button ───────────────────────────────────────────────────
 function DeleteAccountButton({onDelete}) {
   const [confirming,setConfirming] = useState(false);
@@ -799,6 +826,7 @@ export default function App() {
   const [viewingRec,setViewingRec]         = useState(null);
   const [savedRecs,setSavedRecs]           = useState({});
   const [editingTop5,setEditingTop5]       = useState(null);
+  const [notifStatus,setNotifStatus]       = useState("idle"); // idle | requesting | granted | denied
 
   // ── Listen to Firebase Auth state ──
   useEffect(()=>{
@@ -1002,6 +1030,13 @@ export default function App() {
     }
   }
 
+  async function handleEnableNotifications(){
+    if(!authUser||!user) return;
+    setNotifStatus("requesting");
+    const granted = await requestNotificationPermission(authUser.uid, user.name);
+    setNotifStatus(granted ? "granted" : "denied");
+  }
+
   async function handleLeaveNation(nationId){
     if(!authUser||!user) return;
     // Remove user from nation members
@@ -1076,8 +1111,9 @@ export default function App() {
               <button onClick={handleSignOut} style={{...S.btnSec,fontSize:12,width:"auto",padding:"8px 16px"}}>Sign out</button>
               <DeleteAccountButton onDelete={handleDeleteAccount}/>
             </div>
+            <NotificationButton status={notifStatus} onEnable={handleEnableNotifications}/>
             <a href="/privacy" target="_blank" rel="noopener noreferrer"
-              style={{fontSize:11,color:"#444",fontFamily:"sans-serif",textDecoration:"underline"}}>Privacy Policy</a>
+              style={{fontSize:11,color:"#444",fontFamily:"sans-serif",textDecoration:"underline",display:"block",marginTop:10}}>Privacy Policy</a>
           </div>
         )}
         {memberTop5s.length>0&&(
