@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export default function Privacy() {
   const S = {
-    page: {minHeight:"100vh",background:"#0d0f1a",color:"#f0eee8",fontFamily:"'Georgia',serif",padding:"48px 24px 80px"},
+    page: {minHeight:"100vh",background:"#0d0f1a",color:"#f0eee8",fontFamily:"'Georgia',serif",padding:"48px 24px 80px",overflowY:"auto"},
     inner: {maxWidth:640,margin:"0 auto"},
     h1: {fontSize:32,fontWeight:700,letterSpacing:"-1px",fontStyle:"italic",marginBottom:6},
     h2: {fontSize:18,fontWeight:700,letterSpacing:"-0.3px",margin:"32px 0 10px",color:"#e8c547"},
