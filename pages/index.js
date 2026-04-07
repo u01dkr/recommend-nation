@@ -8,6 +8,7 @@ import {
   onAuthStateChanged,
   updateProfile,
   sendPasswordResetEmail,
+  deleteUser,
 } from "firebase/auth";
 
 // ─── Categories ───────────────────────────────────────────────────────────────
@@ -121,6 +122,7 @@ function AuthScreen({onAuth}) {
   const [name,setName]       = useState("");
   const [email,setEmail]     = useState("");
   const [password,setPassword] = useState("");
+  const [agreed,setAgreed]   = useState(false);
   const [error,setError]     = useState("");
   const [loading,setLoading] = useState(false);
   const [resetSent,setResetSent] = useState(false);
@@ -129,12 +131,12 @@ function AuthScreen({onAuth}) {
     if (!name.trim())     { setError("Please enter your name."); return; }
     if (!email.trim())    { setError("Please enter your email."); return; }
     if (password.length < 6) { setError("Password should be at least 6 characters."); return; }
+    if (!agreed)          { setError("Please agree to the Privacy Policy to continue."); return; }
     setLoading(true); setError("");
     try {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
       await updateProfile(cred.user, {displayName: name.trim()});
-      // Store user profile in database
-      await set(ref(db, `users/${cred.user.uid}`), {name: name.trim(), email: email.trim(), nationIds: []});
+      await set(ref(db, `users/${cred.user.uid}`), {name: name.trim(), email: email.trim(), nationIds: [], agreedToPrivacyPolicy: true});
       onAuth(cred.user);
     } catch(e) { setError(friendlyAuthError(e.code)); }
     setLoading(false);
@@ -203,11 +205,22 @@ function AuthScreen({onAuth}) {
           {mode==="login"&&(
             <button onClick={()=>{setMode("reset");setError("");}} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:12,fontFamily:"sans-serif",padding:0,textAlign:"left",marginTop:-4}}>Forgot password?</button>
           )}
+          {mode==="signup"&&(
+            <label style={{display:"flex",alignItems:"flex-start",gap:10,cursor:"pointer"}}>
+              <input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)}
+                style={{marginTop:3,accentColor:"#e8c547",width:16,height:16,flexShrink:0,cursor:"pointer"}}/>
+              <span style={{fontSize:12,color:"#555",fontFamily:"sans-serif",lineHeight:1.5}}>
+                I agree to the{" "}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer"
+                  style={{color:"#e8c547",textDecoration:"underline"}}>Privacy Policy</a>
+              </span>
+            </label>
+          )}
           <button onClick={mode==="login"?handleLogin:handleSignup} disabled={loading}
             style={{...S.btn,opacity:loading?0.6:1,marginTop:4}}>
             {loading?(mode==="login"?"Signing in…":"Creating account…"):(mode==="login"?"Sign in →":"Create account →")}
           </button>
-          <button onClick={()=>{setMode(mode==="login"?"signup":"login");setError("");}}
+          <button onClick={()=>{setMode(mode==="login"?"signup":"login");setError("");setAgreed(false);}}
             style={{...S.btnSec,fontSize:13}}>
             {mode==="login"?"Don't have an account? Sign up":"Already have an account? Sign in"}
           </button>
@@ -651,6 +664,27 @@ function Top5Tab({myNations,activeNId,nations,onView,onAdd,onEdit,user,onProfile
   );
 }
 
+// ─── Delete Account Button ───────────────────────────────────────────────────
+function DeleteAccountButton({onDelete}) {
+  const [confirming,setConfirming] = useState(false);
+  if(!confirming) return (
+    <button onClick={()=>setConfirming(true)} style={{background:"transparent",color:"#e87a7a",border:"1px solid #e87a7a",borderRadius:10,padding:"8px 16px",fontSize:12,fontFamily:"sans-serif",cursor:"pointer"}}>
+      Delete account
+    </button>
+  );
+  return (
+    <div style={{background:"#1a1d30",borderRadius:12,padding:14,border:"1px solid #272b42",width:"100%"}}>
+      <p style={{margin:"0 0 10px",fontSize:13,fontFamily:"sans-serif",color:"#f0eee8"}}>
+        This will permanently delete your account and all your data. This cannot be undone.
+      </p>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>setConfirming(false)} style={{flex:1,background:"transparent",color:"#666",border:"1px solid #272b42",borderRadius:10,padding:"8px",fontSize:12,cursor:"pointer"}}>Cancel</button>
+        <button onClick={onDelete} style={{flex:1,background:"#e87a7a",color:"#0d0f1a",border:"none",borderRadius:10,padding:"8px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Yes, delete everything</button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Nation Card (proper component so hooks work in list) ────────────────────
 function NationCard({n,user,onEnter,onLeave,onViewProfile}) {
   const [expanded,setExpanded] = useState(false);
@@ -947,6 +981,27 @@ export default function App() {
     setSavedRecs({});
   }
 
+  async function handleDeleteAccount(){
+    if(!authUser||!user) return;
+    try {
+      // Remove user from all nation member lists
+      for(const nid of myNationIds){
+        await remove(ref(db,`nations/${nid}/members/${user.name}`));
+      }
+      // Delete user profile from database
+      await remove(ref(db,`users/${authUser.uid}`));
+      // Delete Firebase auth account
+      await deleteUser(authUser);
+      // State cleanup
+      setNations({});
+      setMyNIds([]);
+      setActiveNId(null);
+      setSavedRecs({});
+    } catch(e) {
+      alert("Could not delete account. Please sign out and sign back in, then try again.");
+    }
+  }
+
   async function handleLeaveNation(nationId){
     if(!authUser||!user) return;
     // Remove user from nation members
@@ -1016,7 +1071,10 @@ export default function App() {
           ))}
         </div>
         {isMe&&(
-          <button onClick={handleSignOut} style={{...S.btnSec,fontSize:12,marginBottom:24,width:"auto",padding:"8px 16px"}}>Sign out</button>
+          <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>
+            <button onClick={handleSignOut} style={{...S.btnSec,fontSize:12,width:"auto",padding:"8px 16px"}}>Sign out</button>
+            <DeleteAccountButton onDelete={handleDeleteAccount}/>
+          </div>
         )}
         {memberTop5s.length>0&&(
           <div style={{marginBottom:24}}>
