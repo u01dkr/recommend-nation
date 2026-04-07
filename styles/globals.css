@@ -1,5 +1,5 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { background: #0d0f1a; font-family: 'Georgia', serif; color: #f0eee8; }
+html, body { background: #0d0f1a; font-family: 'Georgia', serif; color: #f0eee8; height: 100%; overflow-y: auto; }
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(10px); }
