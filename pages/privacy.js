@@ -82,7 +82,7 @@ export default function Privacy() {
         <hr style={S.hr}/>
 
         <h2 style={S.h2}>Children</h2>
-        <p style={S.p}>Recommend Nation is not intended for children under 13. We do not knowingly collect data from children under 13.</p>
+        <p style={S.p}>Recommend Nation is not intended for children under 16. We do not knowingly collect data from children under 16.</p>
 
         <hr style={S.hr}/>
 
