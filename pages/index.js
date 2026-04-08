@@ -213,6 +213,9 @@ function AuthScreen({onAuth}) {
                 I agree to the{" "}
                 <a href="/privacy" target="_blank" rel="noopener noreferrer"
                   style={{color:"#e8c547",textDecoration:"underline"}}>Privacy Policy</a>
+                {" "}and{" "}
+                <a href="/terms" target="_blank" rel="noopener noreferrer"
+                  style={{color:"#e8c547",textDecoration:"underline"}}>Terms of Service</a>
               </span>
             </label>
           )}
@@ -1112,8 +1115,14 @@ export default function App() {
               <DeleteAccountButton onDelete={handleDeleteAccount}/>
             </div>
             <NotificationButton status={notifStatus} onEnable={handleEnableNotifications}/>
-            <a href="/privacy" target="_blank" rel="noopener noreferrer"
-              style={{fontSize:11,color:"#444",fontFamily:"sans-serif",textDecoration:"underline",display:"block",marginTop:10}}>Privacy Policy</a>
+            <div style={{display:"flex",gap:16,marginTop:10,flexWrap:"wrap"}}>
+              <a href="/help" target="_blank" rel="noopener noreferrer"
+                style={{fontSize:11,color:"#444",fontFamily:"sans-serif",textDecoration:"underline"}}>Help & Welcome</a>
+              <a href="/privacy" target="_blank" rel="noopener noreferrer"
+                style={{fontSize:11,color:"#444",fontFamily:"sans-serif",textDecoration:"underline"}}>Privacy Policy</a>
+              <a href="/terms" target="_blank" rel="noopener noreferrer"
+                style={{fontSize:11,color:"#444",fontFamily:"sans-serif",textDecoration:"underline"}}>Terms of Service</a>
+            </div>
           </div>
         )}
         {memberTop5s.length>0&&(
