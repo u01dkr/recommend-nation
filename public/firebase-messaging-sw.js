@@ -13,17 +13,6 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Handle background messages
-messaging.onBackgroundMessage((payload) => {
-  const { title, body } = payload.notification;
-  self.registration.showNotification(title, {
-    body,
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
-    data: { url: 'https://recommendnation.app' },
-  });
-});
-
 // Handle notification click — open the app
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
