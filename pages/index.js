@@ -1077,13 +1077,6 @@ export default function App() {
     await update(ref(db,`nations/${rec._nid}/recs/${rec._fbid}/comments/${commentId}`),{text:newText,edited:true});
   }
 
-  // ── Loading state ──
-  if(authUser===undefined) return (
-    <div style={{minHeight:"100vh",background:"#0d0f1a",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{color:"#e8c547",fontSize:11,letterSpacing:"0.25em",textTransform:"uppercase",fontFamily:"sans-serif",fontWeight:700}}>✦ Loading…</div>
-    </div>
-  );
-
   // ── Edit Top 5 ──
   if(editingTop5) return (
     <EditTop5Screen editingTop5={editingTop5} onCancel={()=>setEditingTop5(null)} onSave={handleEditTop5}/>
@@ -1227,7 +1220,12 @@ export default function App() {
     );
   }
 
-  // ── Auth screens ──
+  // ── Auth screens — don't show until Firebase has checked auth state ──
+  if(authUser===undefined) return (
+    <div style={{minHeight:"100vh",background:"#0d0f1a",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{color:"#e8c547",fontSize:11,letterSpacing:"0.25em",textTransform:"uppercase",fontFamily:"sans-serif",fontWeight:700}}>✦ Loading…</div>
+    </div>
+  );
   if(screen==="welcome") return <WelcomeScreen onStart={()=>setScreen("auth")}/>;
   if(screen==="auth")    return <AuthScreen onAuth={()=>setScreen("nations")}/>;
 
