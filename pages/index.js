@@ -672,6 +672,82 @@ function Top5Tab({myNations,activeNId,nations,onView,onAdd,onEdit,user,onProfile
   );
 }
 
+// ─── Help Tab ────────────────────────────────────────────────────────────────
+function HelpTab() {
+  const HL = {color:"#e8c547",fontWeight:700};
+  const sectionTitle = {fontSize:11,letterSpacing:"0.2em",textTransform:"uppercase",color:"#e8c547",fontFamily:"sans-serif",fontWeight:700,marginBottom:16,marginTop:8};
+  const itemWrap = {marginBottom:20,paddingLeft:12,borderLeft:"2px solid #1a1d30"};
+  const itemTitle = {fontSize:15,fontWeight:700,letterSpacing:"-0.3px",margin:"0 0 5px",color:"#f0eee8"};
+  const itemBody = {fontSize:13,lineHeight:1.75,color:"#888",fontFamily:"sans-serif",margin:0};
+  const hr = {border:"none",borderTop:"1px solid #1a1d30",margin:"24px 0"};
+
+  const Item = ({title,children}) => (
+    <div style={itemWrap}>
+      <div style={itemTitle}>{title}</div>
+      <div style={itemBody}>{children}</div>
+    </div>
+  );
+
+  return (
+    <div style={{paddingBottom:40}}>
+      {/* Welcome */}
+      <div style={{background:"#13162a",borderRadius:14,padding:"20px 18px",border:"1px solid #1a1d30",marginBottom:24}}>
+        <div style={{fontSize:11,letterSpacing:"0.25em",textTransform:"uppercase",color:"#e8c547",marginBottom:10,fontFamily:"sans-serif",fontWeight:700}}>✦ Welcome</div>
+        <p style={{fontSize:14,lineHeight:1.8,color:"#aaa",fontFamily:"sans-serif",margin:"0 0 10px"}}>The best recommendations come from people you actually know and trust.</p>
+        <p style={{fontSize:14,lineHeight:1.8,color:"#aaa",fontFamily:"sans-serif",margin:"0 0 10px"}}>Watched something brilliant? Discovered an amazing restaurant? Read a book you can't stop thinking about? Take 30 seconds to share it with the people who matter.</p>
+        <p style={{fontSize:14,lineHeight:1.8,color:"#aaa",fontFamily:"sans-serif",margin:"0 0 10px"}}>Create a Nation for each group in your life — family, friends, colleagues — and start sharing. Keep it simple. No need for links or photos. If someone's curious about your rec, they can find it in seconds online. Your job is just to point them in the right direction.</p>
+        <p style={{fontSize:14,lineHeight:1.8,color:"#e8c547",fontFamily:"'Georgia',serif",fontStyle:"italic",margin:0}}>Life's too short for bad movies and mediocre restaurants. Trust your people.</p>
+      </div>
+
+      {/* Getting Started */}
+      <div style={sectionTitle}>Getting Started</div>
+      <Item title="Create a Nation">Tap the <span style={HL}>Nations</span> icon in the bottom bar. Tap <span style={HL}>Create a new Nation</span>, give it a name and tap Create. You'll get a unique 6-character code to share with anyone you want to invite.</Item>
+      <Item title="Join a Nation">Tap <span style={HL}>Nations</span> in the bottom bar, then <span style={HL}>Join with a code</span>. Enter the 6-character code and tap Join.</Item>
+      <Item title="Invite others">Share your Nation's 6-character code by text, WhatsApp or email. You can find it on the Nations screen or at the top of your Nation's feed.</Item>
+
+      <div style={hr}/>
+
+      {/* Making Recs */}
+      <div style={sectionTitle}>Making Recommendations</div>
+      <Item title="Post to all of your Nations">Start from the <span style={HL}>All feed</span> — tap <span style={HL}>+ Rec</span> and post as normal. It goes to all your Nations by default.</Item>
+      <Item title="Post to a specific Nation only">Navigate to that Nation's feed using the pills at the top, then tap <span style={HL}>+ Rec</span>. It will post only to that Nation.</Item>
+      <Item title="Post to some of your Nations">Start from the <span style={HL}>All feed</span>, tap <span style={HL}>+ Rec</span>, then use the Nation toggles at the bottom of the form to deselect any Nations you don't want to post to.</Item>
+      <Item title="Edit or delete your own rec">Tap any rec you posted to open it. You'll see <span style={HL}>Edit</span> and <span style={HL}>Delete</span> buttons in the top right corner.</Item>
+
+      <div style={hr}/>
+
+      {/* Interacting */}
+      <div style={sectionTitle}>Interacting with Recommendations</div>
+      <Item title="Comment">Tap any rec to open it, type in the comment box at the bottom and tap the arrow. You can edit or delete your own comments.</Item>
+      <Item title="Like">Tap the ❤️ on any rec card or inside the rec detail view.</Item>
+      <Item title="Save">Tap the 🔖 on any rec. Find saved recs under the <span style={HL}>Saved</span> tab.</Item>
+
+      <div style={hr}/>
+
+      {/* Top 5s */}
+      <div style={sectionTitle}>Top 5s</div>
+      <Item title="Post a Top 5">Tap the <span style={HL}>Top 5s</span> tab or the <span style={HL}>🏆</span> icon in the bottom bar, then tap <span style={HL}>+ Add yours</span>. You can edit your Top 5 at any time by tapping <span style={HL}>Edit</span> next to your list.</Item>
+
+      <div style={hr}/>
+
+      {/* Filtering */}
+      <div style={sectionTitle}>Filtering</div>
+      <Item title="Filter by Nation">Tap any Nation pill at the top of the screen. Tap <span style={HL}>All</span> to see everything.</Item>
+      <Item title="Filter by category">In the Feed tab, tap any category pill (🎬 Movies, 📺 TV Series etc.).</Item>
+
+      <div style={hr}/>
+
+      {/* Account */}
+      <div style={sectionTitle}>Your Account</div>
+      <Item title="Leave a Nation">Go to Nations in the bottom bar. Tap <span style={HL}>Leave</span> on any Nation. You can rejoin later with the code.</Item>
+      <Item title="Sign out">Tap your <span style={HL}>avatar</span> top right → <span style={HL}>Sign out</span>.</Item>
+      <Item title="Delete your account">Tap your <span style={HL}>avatar</span> top right → <span style={HL}>Delete account</span>. Permanently removes all your data.</Item>
+      <Item title="Enable push notifications">Tap your <span style={HL}>avatar</span> top right → <span style={HL}>Enable notifications</span> → Allow. On iPhone, add the app to your home screen first (Safari → Share → Add to Home Screen).</Item>
+      <Item title="Privacy Policy & Terms">Tap your <span style={HL}>avatar</span> top right → scroll to the links above your recommendations.</Item>
+    </div>
+  );
+}
+
 // ─── Notification Button ─────────────────────────────────────────────────────
 function NotificationButton({status,onEnable}) {
   if(typeof window !== "undefined" && !("Notification" in window)) return null;
@@ -1115,8 +1191,6 @@ export default function App() {
             </div>
             <NotificationButton status={notifStatus} onEnable={handleEnableNotifications}/>
             <div style={{display:"flex",gap:16,marginTop:10,flexWrap:"wrap"}}>
-              <a href="/help" target="_blank" rel="noopener noreferrer"
-                style={{fontSize:11,color:"#444",fontFamily:"sans-serif",textDecoration:"underline"}}>Help & Welcome</a>
               <a href="/privacy" target="_blank" rel="noopener noreferrer"
                 style={{fontSize:11,color:"#444",fontFamily:"sans-serif",textDecoration:"underline"}}>Privacy Policy</a>
               <a href="/terms" target="_blank" rel="noopener noreferrer"
@@ -1293,9 +1367,9 @@ export default function App() {
             </div>
           </div>
           <div style={{display:"flex",borderBottom:"1px solid #1a1d30"}}>
-            {["feed","saved","top5s"].map(tab=>(
+            {["feed","saved","top5s","help"].map(tab=>(
               <button key={tab} onClick={()=>setActiveTab(tab)} style={{background:"none",border:"none",cursor:"pointer",padding:"6px 13px 9px",fontSize:11,fontFamily:"sans-serif",fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:activeTab===tab?"#e8c547":"#444",borderBottom:activeTab===tab?"2px solid #e8c547":"2px solid transparent",marginBottom:-1,transition:"color 0.15s"}}>
-                {tab==="top5s"?"Top 5s":tab}
+                {tab==="top5s"?"Top 5s":tab.charAt(0).toUpperCase()+tab.slice(1)}
               </button>
             ))}
           </div>
@@ -1335,6 +1409,7 @@ export default function App() {
             onEdit={({member,nationId,catId,items})=>setEditingTop5({member,nationId,catId,items})}
             onProfile={(member,nId)=>setViewingProfile({member,nationId:nId})}/>
         )}
+        {activeTab==="help"&&<HelpTab/>}
 
         {(activeTab==="feed"||activeTab==="saved")&&(
           filteredRecs.length===0?(
