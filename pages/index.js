@@ -35,6 +35,11 @@ function generateCode() {
   return Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join("");
 }
 
+// Firebase keys cannot contain . # $ [ ] /
+function sanitiseKey(str) {
+  return str.replace(/[.#$[\]/]/g, "_");
+}
+
 const PALETTE = ["#c8813a","#5a7ec8","#4caf50","#c83a7e","#7e3ac8","#3ac8c8","#c8a83a","#c84a4a","#4ac8a8","#a84ac8"];
 const avatarColor = s => PALETTE[(s?.charCodeAt(0)||65) % PALETTE.length];
 
@@ -135,8 +140,8 @@ function AuthScreen({onAuth}) {
     setLoading(true); setError("");
     try {
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-      await updateProfile(cred.user, {displayName: name.trim()});
-      await set(ref(db, `users/${cred.user.uid}`), {name: name.trim(), email: email.trim(), nationIds: [], agreedToPrivacyPolicy: true});
+      await updateProfile(cred.user, {displayName: sanitiseKey(name.trim())});
+      await set(ref(db, `users/${cred.user.uid}`), {name: sanitiseKey(name.trim()), email: email.trim(), nationIds: [], agreedToPrivacyPolicy: true});
       onAuth(cred.user);
     } catch(e) { setError(friendlyAuthError(e.code)); }
     setLoading(false);
@@ -846,7 +851,8 @@ export default function App() {
           const savedSnap = await get(ref(db, `users/${firebaseUser.uid}/savedRecs`));
           if(savedSnap.exists()) setSavedRecs(savedSnap.val()||{});
         } else {
-          const name = firebaseUser.displayName || firebaseUser.email.split("@")[0];
+          const rawName = firebaseUser.displayName || firebaseUser.email.split("@")[0];
+          const name = sanitiseKey(rawName);
           await set(ref(db, `users/${firebaseUser.uid}`), {
             name, email: firebaseUser.email, nationIds: {}
           });
@@ -907,7 +913,7 @@ export default function App() {
       const snap=await get(ref(db,`nations/${code}`));
       if(snap.exists()){
         if(myNationIds.includes(code)){setJoinError("You're already in this Nation!");return;}
-        const userName = user?.name || auth.currentUser?.displayName || "Member";
+        const userName = sanitiseKey(user?.name || auth.currentUser?.displayName || "Member");
         const uid = authUser?.uid || auth.currentUser?.uid;
         // Add member to nation
         await update(ref(db,`nations/${code}/members`),{[userName]:true});
