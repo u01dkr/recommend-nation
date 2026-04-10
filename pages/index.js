@@ -20,6 +20,7 @@ const CATEGORIES = [
   { id: "restaurants", label: "Restaurants",     emoji: "🍽️", color: "#e87a7a", fields: ["Name", "Location",  "Comments"] },
   { id: "stay",        label: "Places to Stay",  emoji: "🏨", color: "#e8b07a", fields: ["Name", "Location",  "Comments"] },
   { id: "visit",       label: "Places to Visit", emoji: "🗺️", color: "#7ae8d8", fields: ["Name", "Location",  "Comments"] },
+  { id: "other",       label: "Other",           emoji: "✨", color: "#e87ab0", fields: ["Name", "Type",      "Comments"] },
 ];
 const CAT_MAP = Object.fromEntries(CATEGORIES.map(c => [c.id, c]));
 
