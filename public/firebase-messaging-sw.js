@@ -11,46 +11,20 @@ firebase.initializeApp({
   appId: "1:81687951628:web:4325063f8cdf37fe293129"
 });
 
-const messaging = firebase.messaging();
+// Initialise messaging but do NOT add onBackgroundMessage handler
+// FCM handles notification display natively — we only intercept the click
+firebase.messaging();
 
-// Only show notification if app is not in the foreground
-messaging.onBackgroundMessage((payload) => {
-  // Check if any app windows are currently focused
-  return clients.matchAll({
-    type: 'window',
-    includeUncontrolled: true
-  }).then((clientList) => {
-    // If any window is visible and focused, skip the notification
-    // FCM will have already delivered it to the foreground handler
-    const isFocused = clientList.some(
-      client => client.visibilityState === 'visible'
-    );
-    if (isFocused) return;
-
-    const { title, body } = payload.notification || {};
-    if (!title) return;
-
-    return self.registration.showNotification(title, {
-      body,
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      data: { url: 'https://recommendnation.app' },
-    });
-  });
-});
-
-// Handle notification click — open the app
+// Handle notification click — open or focus the app
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // If app is already open, focus it
       for (const client of clientList) {
         if (client.url.includes('recommendnation.app') && 'focus' in client) {
           return client.focus();
         }
       }
-      // Otherwise open a new window
       return clients.openWindow('https://recommendnation.app');
     })
   );
