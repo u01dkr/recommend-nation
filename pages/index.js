@@ -957,6 +957,16 @@ export default function App() {
     return ()=>unsub();
   },[]);
 
+  // ── Check notification status on load ──
+  useEffect(()=>{
+    if(!authUser) return;
+    get(ref(db, `users/${authUser.uid}/fcmTokens`)).then(snap=>{
+      if(snap.exists() && Object.keys(snap.val()||{}).length > 0){
+        setNotifStatus("granted");
+      }
+    });
+  },[authUser]);
+
   // ── Subscribe to nations from Firebase ──
   useEffect(()=>{
     if(!myNationIds.length) return;
