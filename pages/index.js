@@ -750,20 +750,30 @@ function HelpTab() {
 }
 
 // ─── Notification Button ─────────────────────────────────────────────────────
-function NotificationButton({status,onEnable}) {
+function NotificationButton({status,onEnable,onDisable}) {
   if(typeof window !== "undefined" && !("Notification" in window)) return null;
-  if(status==="granted" || (typeof window !== "undefined" && Notification.permission==="granted")) {
+
+  const isGranted = status==="granted" || (typeof window !== "undefined" && Notification.permission==="granted");
+  const isDenied  = status==="denied"  || (typeof window !== "undefined" && Notification.permission==="denied");
+
+  if(isGranted) {
     return (
-      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-        <span style={{fontSize:14}}>🔔</span>
-        <span style={{fontSize:12,fontFamily:"sans-serif",color:"#7ae8a0"}}>Notifications enabled</span>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:14}}>🔔</span>
+          <span style={{fontSize:12,fontFamily:"sans-serif",color:"#7ae8a0"}}>Notifications enabled</span>
+        </div>
+        <button onClick={onDisable}
+          style={{background:"none",border:"none",cursor:"pointer",fontSize:11,fontFamily:"sans-serif",color:"#555",textDecoration:"underline",padding:0}}>
+          Disable
+        </button>
       </div>
     );
   }
-  if(status==="denied" || (typeof window !== "undefined" && Notification.permission==="denied")) {
+  if(isDenied) {
     return (
       <div style={{marginBottom:8}}>
-        <span style={{fontSize:12,fontFamily:"sans-serif",color:"#e87a7a"}}>Notifications blocked — please enable in browser settings</span>
+        <span style={{fontSize:12,fontFamily:"sans-serif",color:"#e87a7a"}}>Notifications blocked — please enable in your device settings</span>
       </div>
     );
   }
@@ -1123,6 +1133,17 @@ export default function App() {
     setNotifStatus(granted ? "granted" : "denied");
   }
 
+  async function handleDisableNotifications(){
+    if(!authUser) return;
+    try {
+      // Remove all FCM tokens for this user from Firebase
+      await remove(ref(db, `users/${authUser.uid}/fcmTokens`));
+      setNotifStatus("idle");
+    } catch(e) {
+      console.error("Error disabling notifications:", e);
+    }
+  }
+
   async function handleLeaveNation(nationId){
     if(!authUser||!user) return;
     // Remove user from nation members
@@ -1190,7 +1211,7 @@ export default function App() {
               <button onClick={handleSignOut} style={{...S.btnSec,fontSize:12,width:"auto",padding:"8px 16px"}}>Sign out</button>
               <DeleteAccountButton onDelete={handleDeleteAccount}/>
             </div>
-            <NotificationButton status={notifStatus} onEnable={handleEnableNotifications}/>
+            <NotificationButton status={notifStatus} onEnable={handleEnableNotifications} onDisable={handleDisableNotifications}/>
             <div style={{display:"flex",gap:16,marginTop:10,flexWrap:"wrap"}}>
               <a href="/privacy" target="_blank" rel="noopener noreferrer"
                 style={{fontSize:11,color:"#444",fontFamily:"sans-serif",textDecoration:"underline"}}>Privacy Policy</a>
