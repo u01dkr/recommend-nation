@@ -753,7 +753,7 @@ function HelpTab() {
 function NotificationButton({status,onEnable,onDisable}) {
   if(typeof window !== "undefined" && !("Notification" in window)) return null;
 
-  const isGranted = status==="granted" || (typeof window !== "undefined" && Notification.permission==="granted");
+  const isGranted = status==="granted" || (status!=="disabled" && status!=="idle" && status!=="requesting" && typeof window !== "undefined" && Notification.permission==="granted");
   const isDenied  = status==="denied"  || (typeof window !== "undefined" && Notification.permission==="denied");
 
   if(isGranted) {
@@ -1136,9 +1136,8 @@ export default function App() {
   async function handleDisableNotifications(){
     if(!authUser) return;
     try {
-      // Remove all FCM tokens for this user from Firebase
       await remove(ref(db, `users/${authUser.uid}/fcmTokens`));
-      setNotifStatus("idle");
+      setNotifStatus("disabled"); // custom state to override browser permission check
     } catch(e) {
       console.error("Error disabling notifications:", e);
     }
