@@ -310,59 +310,121 @@ function CreatedSuccess({code,name,onDone}) {
   );
 }
 
-function AddRecModal({form,setForm,onSubmit,myNations,activeNId}) {
+function AddRecModal({form,setForm,onSubmit,onSubmitReq,myNations,activeNId}) {
+  const [mode,setMode] = useState("rec"); // "rec" | "req"
   const cat=CAT_MAP[form.category];
-  // Nation selection state — default all nations selected
   const [selectedNations,setSelectedNations]=useState(()=>new Set(myNations.map(n=>n.id)));
+  const [reqCategory,setReqCategory]=useState("movies");
+  const [reqText,setReqText]=useState("");
   const showPicker=!activeNId&&myNations.length>1;
 
   function toggleNation(id){
     setSelectedNations(prev=>{
       const next=new Set(prev);
-      if(next.has(id)&&next.size>1) next.delete(id); // always keep at least one
+      if(next.has(id)&&next.size>1) next.delete(id);
       else next.add(id);
       return next;
     });
   }
 
-  function handleSubmit(){
+  function handleSubmitRec(){
     onSubmit(activeNId?null:[...selectedNations]);
   }
 
+  function handleSubmitReq(){
+    if(!reqText.trim()) return;
+    onSubmitReq({category:reqCategory, text:reqText, selectedNations:activeNId?null:[...selectedNations]});
+    setReqText("");
+  }
+
+  const tabStyle = (active) => ({
+    flex:1, background:"none", border:"none", cursor:"pointer",
+    padding:"8px 0", fontSize:13, fontFamily:"sans-serif", fontWeight:700,
+    color: active?"#e8c547":"#444",
+    borderBottom: active?"2px solid #e8c547":"2px solid transparent",
+    transition:"all 0.15s", marginBottom:-1,
+  });
+
   return (
     <div>
-      <h2 style={{margin:"0 0 14px",fontSize:22,fontStyle:"italic",letterSpacing:"-0.5px",color:"#f0eee8"}}>Rec something</h2>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:14}}>
-        {CATEGORIES.map(c=>(
-          <button key={c.id} onClick={()=>setForm(f=>({...f,category:c.id,field1:"",field2:"",note:""}))}
-            style={{background:form.category===c.id?c.color:"#1a1d30",color:form.category===c.id?"#0d0f1a":"#555",border:"none",borderRadius:10,padding:"8px 4px",fontSize:10,fontFamily:"sans-serif",fontWeight:700,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,transition:"all 0.15s"}}>
-            <span style={{fontSize:18}}>{c.emoji}</span><span style={{lineHeight:1.2,textAlign:"center"}}>{c.label}</span>
-          </button>
-        ))}
+      {/* Mode switcher */}
+      <div style={{display:"flex",borderBottom:"1px solid #1a1d30",marginBottom:16}}>
+        <button style={tabStyle(mode==="rec")} onClick={()=>setMode("rec")}>✦ Add a rec</button>
+        <button style={tabStyle(mode==="req")} onClick={()=>setMode("req")}>❓ Add a req</button>
       </div>
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        <input placeholder={`${cat.fields[0]} *`} value={form.field1} onChange={e=>setForm(f=>({...f,field1:e.target.value}))} style={S.input}/>
-        <input placeholder={cat.fields[1]} value={form.field2} onChange={e=>setForm(f=>({...f,field2:e.target.value}))} style={S.input}/>
-        <textarea placeholder={`${cat.fields[2]} (optional)`} value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} rows={3} style={{...S.input,resize:"none",lineHeight:1.6}}/>
-        {showPicker&&(
-          <div>
-            <div style={{fontSize:11,color:"#555",fontFamily:"sans-serif",marginBottom:6,letterSpacing:"0.05em",textTransform:"uppercase",fontWeight:700}}>Post to</div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-              {myNations.map(n=>{
-                const on=selectedNations.has(n.id);
-                return (
-                  <button key={n.id} onClick={()=>toggleNation(n.id)}
-                    style={{background:on?"#e8c547":"#1a1d30",color:on?"#0d0f1a":"#555",border:`1px solid ${on?"#e8c547":"#272b42"}`,borderRadius:20,padding:"5px 12px",fontSize:12,fontFamily:"sans-serif",fontWeight:700,cursor:"pointer",transition:"all 0.15s",display:"flex",alignItems:"center",gap:5}}>
-                    {on&&<span style={{fontSize:10}}>✓</span>}
-                    {nationPillLabel(n.name)}
-                  </button>
-                );
-              })}
-            </div>
+
+      {mode==="rec"&&(
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:14}}>
+            {CATEGORIES.map(c=>(
+              <button key={c.id} onClick={()=>setForm(f=>({...f,category:c.id,field1:"",field2:"",note:""}))}
+                style={{background:form.category===c.id?c.color:"#1a1d30",color:form.category===c.id?"#0d0f1a":"#555",border:"none",borderRadius:10,padding:"8px 4px",fontSize:10,fontFamily:"sans-serif",fontWeight:700,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,transition:"all 0.15s"}}>
+                <span style={{fontSize:18}}>{c.emoji}</span><span style={{lineHeight:1.2,textAlign:"center"}}>{c.label}</span>
+              </button>
+            ))}
           </div>
-        )}
-        <button onClick={handleSubmit} style={{...S.btn,opacity:form.field1.trim()?1:0.4,marginTop:4}}>Post Rec →</button>
-      </div>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <input placeholder={`${cat.fields[0]} *`} value={form.field1} onChange={e=>setForm(f=>({...f,field1:e.target.value}))} style={S.input}/>
+            <input placeholder={cat.fields[1]} value={form.field2} onChange={e=>setForm(f=>({...f,field2:e.target.value}))} style={S.input}/>
+            <textarea placeholder={`${cat.fields[2]} (optional)`} value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} rows={3} style={{...S.input,resize:"none",lineHeight:1.6}}/>
+            {showPicker&&(
+              <div>
+                <div style={{fontSize:11,color:"#555",fontFamily:"sans-serif",marginBottom:6,letterSpacing:"0.05em",textTransform:"uppercase",fontWeight:700}}>Post to</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                  {myNations.map(n=>{
+                    const on=selectedNations.has(n.id);
+                    return (
+                      <button key={n.id} onClick={()=>toggleNation(n.id)}
+                        style={{background:on?"#e8c547":"#1a1d30",color:on?"#0d0f1a":"#555",border:`1px solid ${on?"#e8c547":"#272b42"}`,borderRadius:20,padding:"5px 12px",fontSize:12,fontFamily:"sans-serif",fontWeight:700,cursor:"pointer",transition:"all 0.15s",display:"flex",alignItems:"center",gap:5}}>
+                        {on&&<span style={{fontSize:10}}>✓</span>}
+                        {nationPillLabel(n.name)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            <button onClick={handleSubmitRec} style={{...S.btn,opacity:form.field1.trim()?1:0.4,marginTop:4}}>Post Rec →</button>
+          </div>
+        </div>
+      )}
+
+      {mode==="req"&&(
+        <div>
+          <p style={{fontSize:13,color:"#555",fontFamily:"sans-serif",marginBottom:12}}>Ask your Nation for a recommendation.</p>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:14}}>
+            {CATEGORIES.map(c=>(
+              <button key={c.id} onClick={()=>setReqCategory(c.id)}
+                style={{background:reqCategory===c.id?c.color:"#1a1d30",color:reqCategory===c.id?"#0d0f1a":"#555",border:"none",borderRadius:10,padding:"8px 4px",fontSize:10,fontFamily:"sans-serif",fontWeight:700,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,transition:"all 0.15s"}}>
+                <span style={{fontSize:18}}>{c.emoji}</span><span style={{lineHeight:1.2,textAlign:"center"}}>{c.label}</span>
+              </button>
+            ))}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <textarea placeholder='e.g. "Good family restaurant in Edinburgh?" or "Thriller series for dark evenings?"'
+              value={reqText} onChange={e=>setReqText(e.target.value)}
+              rows={3} style={{...S.input,resize:"none",lineHeight:1.6}}/>
+            {showPicker&&(
+              <div>
+                <div style={{fontSize:11,color:"#555",fontFamily:"sans-serif",marginBottom:6,letterSpacing:"0.05em",textTransform:"uppercase",fontWeight:700}}>Post to</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                  {myNations.map(n=>{
+                    const on=selectedNations.has(n.id);
+                    return (
+                      <button key={n.id} onClick={()=>toggleNation(n.id)}
+                        style={{background:on?"#e8c547":"#1a1d30",color:on?"#0d0f1a":"#555",border:`1px solid ${on?"#e8c547":"#272b42"}`,borderRadius:20,padding:"5px 12px",fontSize:12,fontFamily:"sans-serif",fontWeight:700,cursor:"pointer",transition:"all 0.15s",display:"flex",alignItems:"center",gap:5}}>
+                        {on&&<span style={{fontSize:10}}>✓</span>}
+                        {nationPillLabel(n.name)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            <button onClick={handleSubmitReq} style={{...S.btn,opacity:reqText.trim()?1:0.4,marginTop:4}}>Post Req →</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -403,31 +465,35 @@ function RecCard({rec,user,onLike,onSave,showNation,onProfileClick,onOpen}) {
   const likeCount=Object.keys(rec.likes||{}).length;
   const commentCount=Object.keys(rec.comments||{}).length;
   const av=rec.from?.[0]?.toUpperCase()||"?";
+  const isReq=rec.isRequest;
   return (
-    <div onClick={onOpen} style={{background:"#13162a",borderRadius:14,padding:"15px 17px",border:"1px solid #1a1d30",position:"relative",overflow:"hidden",cursor:"pointer",transition:"background 0.15s"}}
-      onMouseEnter={e=>e.currentTarget.style.background="#1a1f35"}
-      onMouseLeave={e=>e.currentTarget.style.background="#13162a"}>
-      <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,background:cat.color,borderRadius:"14px 0 0 14px"}}/>
+    <div onClick={onOpen}
+      style={{background:isReq?"#0f1520":"#13162a",borderRadius:14,padding:"15px 17px",border:`1px solid ${isReq?"#1a2540":"#1a1d30"}`,position:"relative",overflow:"hidden",cursor:"pointer",transition:"background 0.15s"}}
+      onMouseEnter={e=>e.currentTarget.style.background=isReq?"#131c30":"#1a1f35"}
+      onMouseLeave={e=>e.currentTarget.style.background=isReq?"#0f1520":"#13162a"}>
+      <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,background:isReq?"#5a7eb8":cat.color,borderRadius:"14px 0 0 14px"}}/>
       <div style={{paddingLeft:9}}>
         <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:7}}>
           <div className="av-tap" onClick={e=>{e.stopPropagation();onProfileClick();}}
             style={{width:24,height:24,borderRadius:"50%",background:avatarColor(av),display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"sans-serif",flexShrink:0}}>{av}</div>
           <span className="from-tap" onClick={e=>{e.stopPropagation();onProfileClick();}} style={{fontSize:12,color:"#666",fontFamily:"sans-serif",transition:"color 0.15s"}}>{rec.from}</span>
+          {isReq&&<span style={{fontSize:10,color:"#5a7eb8",background:"#1a2540",borderRadius:5,padding:"1px 6px",fontFamily:"sans-serif",fontWeight:700}}>req</span>}
           {showNation&&<span style={{fontSize:10,color:"#3a4060",background:"#1a1d30",borderRadius:5,padding:"1px 6px",fontFamily:"sans-serif"}}>{showNation}</span>}
-          <span style={{marginLeft:"auto",fontSize:13}}>{cat.emoji}</span>
+          <span style={{marginLeft:"auto",fontSize:13}}>{isReq?"❓":cat.emoji}</span>
         </div>
-        <h3 style={{margin:"0 0 2px",fontSize:16,fontWeight:700,letterSpacing:"-0.4px",lineHeight:1.2,color:"#f0eee8"}}>{rec.field1}</h3>
-        {rec.field2&&<p style={{margin:0,fontSize:12,color:"#555",fontFamily:"sans-serif"}}>{rec.field2}</p>}
-        {rec.note&&<p style={{margin:"8px 0 0",fontSize:13,color:"#7a7a9a",lineHeight:1.55,fontStyle:"italic",borderTop:"1px solid #1a1d30",paddingTop:8}}>"{rec.note}"</p>}
+        <h3 style={{margin:"0 0 2px",fontSize:16,fontWeight:700,letterSpacing:"-0.4px",lineHeight:1.2,color:isReq?"#a0b8d8":"#f0eee8"}}>{rec.field1}</h3>
+        {!isReq&&rec.field2&&<p style={{margin:0,fontSize:12,color:"#555",fontFamily:"sans-serif"}}>{rec.field2}</p>}
+        {!isReq&&rec.note&&<p style={{margin:"8px 0 0",fontSize:13,color:"#7a7a9a",lineHeight:1.55,fontStyle:"italic",borderTop:"1px solid #1a1d30",paddingTop:8}}>"{rec.note}"</p>}
+        {isReq&&<p style={{margin:"6px 0 0",fontSize:12,color:"#5a7eb8",fontFamily:"sans-serif"}}>{cat.emoji} {cat.label}</p>}
         <div style={{display:"flex",alignItems:"center",gap:14,marginTop:11}} onClick={e=>e.stopPropagation()}>
           <button onClick={e=>{e.stopPropagation();onLike();}} style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:5,padding:0,opacity:liked?1:0.35,transition:"opacity 0.15s"}}>
             <span style={{fontSize:14}}>{liked?"❤️":"🤍"}</span>
             {likeCount>0&&<span style={{fontSize:12,fontFamily:"sans-serif",color:liked?"#e87a7a":"#555",fontWeight:600}}>{likeCount}</span>}
           </button>
           <button onClick={e=>{e.stopPropagation();onSave();}} style={{background:"none",border:"none",cursor:"pointer",padding:0,opacity:rec.saved?1:0.3,fontSize:14,transition:"opacity 0.15s"}}>🔖</button>
-          <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4,opacity:0.5}}>
+          <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4,opacity:isReq?0.8:0.5}}>
             <span style={{fontSize:13}}>💬</span>
-            <span style={{fontSize:12,fontFamily:"sans-serif",color:"#666"}}>{commentCount>0?commentCount:"Comment"}</span>
+            <span style={{fontSize:12,fontFamily:"sans-serif",color:isReq?"#5a7eb8":"#666"}}>{commentCount>0?commentCount:isReq?"Respond":"Comment"}</span>
           </div>
         </div>
       </div>
@@ -714,6 +780,7 @@ function HelpTab() {
       <Item title="Post to a specific Nation only">Navigate to that Nation's feed using the pills at the top, then tap <span style={HL}>+ Rec</span>. It will post only to that Nation.</Item>
       <Item title="Post to some of your Nations">Start from the <span style={HL}>All feed</span>, tap <span style={HL}>+ Rec</span>, then use the Nation toggles at the bottom of the form to deselect any Nations you don't want to post to.</Item>
       <Item title="Edit or delete your own rec">Tap any rec you posted to open it. You'll see <span style={HL}>Edit</span> and <span style={HL}>Delete</span> buttons in the top right corner.</Item>
+      <Item title="Add a req (request a recommendation)">Tap <span style={HL}>+ Rec</span> then switch to the <span style={HL}>❓ Add a req</span> tab. Choose a category, describe what you're looking for and post. Your Nation members can reply in the comments.</Item>
 
       <div style={hr}/>
 
@@ -1061,6 +1128,25 @@ export default function App() {
       await push(ref(db,`nations/${tid}/recs`),{category:recForm.category,field1:recForm.field1,field2:recForm.field2,note:recForm.note,from:user.name,ts:Date.now(),likes:{},comments:{}});
     }
     setRecForm({category:"movies",field1:"",field2:"",note:""});
+    closeModal();
+  }
+
+  async function handleAddReq({category, text, selectedNations}){
+    if(!text.trim()) return;
+    const targetIds = activeNId ? [activeNId] : (selectedNations || myNationIds);
+    for(const tid of targetIds){
+      await push(ref(db,`nations/${tid}/recs`),{
+        category,
+        field1: text.trim(),
+        field2: "",
+        note: "",
+        from: user.name,
+        ts: Date.now(),
+        likes: {},
+        comments: {},
+        isRequest: true,
+      });
+    }
     closeModal();
   }
 
@@ -1487,7 +1573,7 @@ export default function App() {
 
       {modal&&(
         <ModalSheet onClose={closeModal}>
-          {modal==="addRec"&&<AddRecModal form={recForm} setForm={setRecForm} onSubmit={(ids)=>handleAddRec(ids)} myNations={myNations} activeNId={activeNId}/>}
+          {modal==="addRec"&&<AddRecModal form={recForm} setForm={setRecForm} onSubmit={(ids)=>handleAddRec(ids)} onSubmitReq={handleAddReq} myNations={myNations} activeNId={activeNId}/>}
           {modal==="joinNation"&&<JoinModal joinCode={joinCode} setJoinCode={setJoinCode} joinError={joinError} onJoin={handleJoin}/>}
           {modal==="createNation"&&!createdCode&&<CreateModal name={newNationName} setName={setNewNationName} onCreate={handleCreateNation}/>}
           {modal==="createNation"&&createdCode&&<CreatedSuccess code={createdCode} name={nations[createdCode]?.name} onDone={()=>{closeModal();setActiveNId(createdCode);setScreen("feed");}}/>}
