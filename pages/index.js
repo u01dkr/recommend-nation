@@ -349,8 +349,8 @@ function AddRecModal({form,setForm,onSubmit,onSubmitReq,myNations,activeNId}) {
     <div>
       {/* Mode switcher */}
       <div style={{display:"flex",borderBottom:"1px solid #1a1d30",marginBottom:16}}>
-        <button style={tabStyle(mode==="rec")} onClick={()=>setMode("rec")}>✦ Add a rec</button>
-        <button style={tabStyle(mode==="req")} onClick={()=>setMode("req")}>❓ Add a req</button>
+        <button style={{...tabStyle(mode==="rec"),fontSize:16,letterSpacing:"-0.3px",fontFamily:"'Georgia',serif",fontStyle:"italic"}} onClick={()=>setMode("rec")}>✦ Add a rec</button>
+        <button style={{...tabStyle(mode==="req"),fontSize:16,letterSpacing:"-0.3px",fontFamily:"'Georgia',serif",fontStyle:"italic"}} onClick={()=>setMode("req")}>❓ Request a rec</button>
       </div>
 
       {mode==="rec"&&(
