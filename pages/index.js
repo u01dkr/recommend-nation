@@ -403,7 +403,7 @@ function AddRecModal({form,setForm,onSubmit,onSubmitReq,myNations,activeNId}) {
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             <textarea placeholder='e.g. "Good family restaurant in Edinburgh?" or "Thriller series for dark evenings?"'
               value={reqText} onChange={e=>setReqText(e.target.value)}
-              rows={3} style={{...S.input,resize:"none",lineHeight:1.6}}/>
+              rows={7} style={{...S.input,resize:"none",lineHeight:1.6}}/>
             {showPicker&&(
               <div>
                 <div style={{fontSize:11,color:"#555",fontFamily:"sans-serif",marginBottom:6,letterSpacing:"0.05em",textTransform:"uppercase",fontWeight:700}}>Post to</div>
