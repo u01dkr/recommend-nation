@@ -41,6 +41,22 @@ function sanitiseKey(str) {
   return str.replace(/[.#$[\]/]/g, "_");
 }
 
+// ─── Deduplication helper ─────────────────────────────────────────────────────
+// Groups recs posted to multiple Nations into a single entry with a _nations array.
+// Key: poster + timestamp + normalised title — identical across all copies of the same rec.
+function deduplicateRecs(recs) {
+  const map = new Map();
+  for (const rec of recs) {
+    const key = `${rec.from}|${rec.ts}|${(rec.field1||"").trim().toLowerCase()}`;
+    if (map.has(key)) {
+      map.get(key)._nations.push({ nid: rec._nid, nname: rec._nname, fbid: rec._fbid });
+    } else {
+      map.set(key, { ...rec, _nations: [{ nid: rec._nid, nname: rec._nname, fbid: rec._fbid }] });
+    }
+  }
+  return Array.from(map.values());
+}
+
 const PALETTE = ["#c8813a","#5a7ec8","#4caf50","#c83a7e","#7e3ac8","#3ac8c8","#c8a83a","#c84a4a","#4ac8a8","#a84ac8"];
 const avatarColor = s => PALETTE[(s?.charCodeAt(0)||65) % PALETTE.length];
 
@@ -458,6 +474,35 @@ function AddTop5Modal({form,setForm,onSubmit}) {
   );
 }
 
+// ─── Nation Picker Modal ──────────────────────────────────────────────────────
+// Shown when a user taps a rec that was posted to multiple Nations.
+// Likes and comments are stored per-Nation, so the user must pick which
+// Nation's version of the rec they want to open.
+function NationPickerModal({nations,onPick,onClose}) {
+  return (
+    <div>
+      <h2 style={{margin:"0 0 6px",fontSize:22,fontStyle:"italic",color:"#f0eee8"}}>Open in which Nation?</h2>
+      <p style={{margin:"0 0 18px",fontSize:13,color:"#555",fontFamily:"sans-serif"}}>
+        This rec was posted to multiple Nations. Likes and comments are separate in each.
+      </p>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {nations.map(n=>(
+          <button key={n.nid} onClick={()=>onPick(n)}
+            style={{background:"#1a1d30",border:"1px solid #272b42",borderRadius:12,padding:"14px 18px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",transition:"background 0.15s",fontFamily:"'Georgia',serif",width:"100%"}}
+            onMouseEnter={e=>e.currentTarget.style.background="#1e2540"}
+            onMouseLeave={e=>e.currentTarget.style.background="#1a1d30"}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:"#e8c547",flexShrink:0}}/>
+              <span style={{fontSize:15,fontWeight:700,color:"#f0eee8"}}>{n.nname}</span>
+            </div>
+            <span style={{color:"#e8c547",fontSize:14}}>→</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Rec Card ─────────────────────────────────────────────────────────────────
 function RecCard({rec,user,onLike,onSave,showNation,onProfileClick,onOpen}) {
   const cat=CAT_MAP[rec.category]||CATEGORIES[0];
@@ -466,6 +511,7 @@ function RecCard({rec,user,onLike,onSave,showNation,onProfileClick,onOpen}) {
   const commentCount=Object.keys(rec.comments||{}).length;
   const av=rec.from?.[0]?.toUpperCase()||"?";
   const isReq=rec.isRequest;
+  const isMultiple=showNation==="__multiple__";
   return (
     <div onClick={onOpen}
       style={{background:isReq?"#0f1520":"#13162a",borderRadius:14,padding:"15px 17px",border:`1px solid ${isReq?"#1a2540":"#1a1d30"}`,position:"relative",overflow:"hidden",cursor:"pointer",transition:"background 0.15s"}}
@@ -478,7 +524,11 @@ function RecCard({rec,user,onLike,onSave,showNation,onProfileClick,onOpen}) {
             style={{width:24,height:24,borderRadius:"50%",background:avatarColor(av),display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"sans-serif",flexShrink:0}}>{av}</div>
           <span className="from-tap" onClick={e=>{e.stopPropagation();onProfileClick();}} style={{fontSize:12,color:"#666",fontFamily:"sans-serif",transition:"color 0.15s"}}>{rec.from}</span>
           {isReq&&<span style={{fontSize:10,color:"#5a7eb8",background:"#1a2540",borderRadius:5,padding:"1px 6px",fontFamily:"sans-serif",fontWeight:700}}>req</span>}
-          {showNation&&<span style={{fontSize:10,color:"#3a4060",background:"#1a1d30",borderRadius:5,padding:"1px 6px",fontFamily:"sans-serif"}}>{showNation}</span>}
+          {showNation&&(
+            isMultiple
+              ? <span style={{fontSize:10,color:"#e8c547",background:"#1a2030",borderRadius:5,padding:"1px 6px",fontFamily:"sans-serif",fontWeight:700,border:"1px solid #2a3550"}}>Multiple</span>
+              : <span style={{fontSize:10,color:"#3a4060",background:"#1a1d30",borderRadius:5,padding:"1px 6px",fontFamily:"sans-serif"}}>{showNation}</span>
+          )}
           <span style={{marginLeft:"auto",fontSize:13}}>{isReq?"❓":cat.emoji}</span>
         </div>
         <h3 style={{margin:"0 0 2px",fontSize:16,fontWeight:700,letterSpacing:"-0.4px",lineHeight:1.2,color:isReq?"#a0b8d8":"#f0eee8"}}>{rec.field1}</h3>
@@ -989,6 +1039,7 @@ export default function App() {
   const [savedRecs,setSavedRecs]           = useState({});
   const [editingTop5,setEditingTop5]       = useState(null);
   const [notifStatus,setNotifStatus]       = useState("idle"); // idle | requesting | granted | denied
+  const [nationPicker,setNationPicker]     = useState(null);  // { nations:[{nid,nname,fbid}], rec }
 
   // ── Listen to Firebase Auth state ──
   useEffect(()=>{
@@ -1050,13 +1101,19 @@ export default function App() {
   const myNations    = myNationIds.map(id=>nations[id]).filter(Boolean);
   const activeNation = activeNId ? nations[activeNId] : null;
 
-  const allRecs = activeNId
-    ? Object.entries(nations[activeNId]?.recs||{}).map(([id,r])=>({...r,_fbid:id,_nid:activeNId}))
+  // ── Build feed recs, deduplicating when in the All view ──
+  const allRecsRaw = activeNId
+    ? Object.entries(nations[activeNId]?.recs||{}).map(([id,r])=>({...r,_fbid:id,_nid:activeNId,_nname:nations[activeNId]?.name}))
     : myNationIds.flatMap(nid=>Object.entries(nations[nid]?.recs||{}).map(([id,r])=>({...r,_fbid:id,_nid:nid,_nname:nations[nid]?.name})));
 
+  // Deduplicate only in the All feed — Nation-specific feeds show all recs as-is
+  const allRecs = activeNId ? allRecsRaw : deduplicateRecs(allRecsRaw);
+
   const filteredRecs=[...allRecs].sort((a,b)=>(b.ts||0)-(a.ts||0)).filter(r=>{
-    if(activeTab==="saved") return savedRecs[r._fbid];
-    if(activeCat!=="all")   return r.category===activeCat;
+    if(activeTab==="saved") return r._nations
+      ? r._nations.some(n=>savedRecs[n.fbid])
+      : savedRecs[r._fbid];
+    if(activeCat!=="all") return r.category===activeCat;
     return true;
   });
 
@@ -1279,7 +1336,9 @@ export default function App() {
   if(viewingProfile){
     const{member,nationId}=viewingProfile;
     const sourceNations=nationId?[nations[nationId]].filter(Boolean):myNations;
-    const memberRecs=sourceNations.flatMap(n=>Object.entries(n?.recs||{}).filter(([,r])=>r.from===member).map(([fbid,r])=>({...r,_fbid:fbid,_nname:n.name,_nid:n.id})));
+    const memberRecsRaw=sourceNations.flatMap(n=>Object.entries(n?.recs||{}).filter(([,r])=>r.from===member).map(([fbid,r])=>({...r,_fbid:fbid,_nname:n.name,_nid:n.id})));
+    // Deduplicate recs on profile page when viewing across multiple Nations
+    const memberRecs = sourceNations.length > 1 ? deduplicateRecs(memberRecsRaw) : memberRecsRaw;
     const memberTop5s=[];
     sourceNations.forEach(n=>{
       const tf=n?.topFives?.[member]||{};
@@ -1349,7 +1408,15 @@ export default function App() {
                   <div style={{fontSize:12,fontFamily:"sans-serif",fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",color:cat.color,marginBottom:8}}>{cat.emoji} {cat.label}</div>
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
                     {catRecs.map(rec=>(
-                      <div key={rec._fbid} onClick={()=>{setViewingProfile(null);setViewingRec({rec});}}
+                      <div key={rec._fbid} onClick={()=>{
+                          setViewingProfile(null);
+                          if(rec._nations && rec._nations.length > 1) {
+                            setNationPicker({nations: rec._nations, rec});
+                            setModal("nationPicker");
+                          } else {
+                            setViewingRec({rec});
+                          }
+                        }}
                         style={{background:"#13162a",borderRadius:12,padding:"12px 15px",border:"1px solid #1a1d30",position:"relative",overflow:"hidden",cursor:"pointer"}}
                         onMouseEnter={e=>e.currentTarget.style.background="#1e2140"}
                         onMouseLeave={e=>e.currentTarget.style.background="#13162a"}>
@@ -1358,6 +1425,11 @@ export default function App() {
                           <div style={{fontSize:15,fontWeight:700}}>{rec.field1}</div>
                           {rec.field2&&<div style={{fontSize:12,color:"#555",fontFamily:"sans-serif",marginTop:1}}>{rec.field2}</div>}
                           {rec.note&&<div style={{fontSize:12,color:"#7a7a9a",fontStyle:"italic",marginTop:7}}>"{rec.note}"</div>}
+                          {rec._nations&&rec._nations.length>1&&(
+                            <div style={{marginTop:6}}>
+                              <span style={{fontSize:10,color:"#e8c547",background:"#1a2030",borderRadius:5,padding:"1px 6px",fontFamily:"sans-serif",fontWeight:700,border:"1px solid #2a3550"}}>Multiple Nations</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1369,6 +1441,21 @@ export default function App() {
         )}
         {memberRecs.length===0&&memberTop5s.length===0&&(
           <div style={{textAlign:"center",padding:"40px 0",color:"#333",fontFamily:"sans-serif",fontSize:14}}>No recs or lists yet.</div>
+        )}
+        {/* Nation picker modal rendered inside profile view */}
+        {modal==="nationPicker"&&nationPicker&&(
+          <ModalSheet onClose={()=>{setNationPicker(null);closeModal();}}>
+            <NationPickerModal
+              nations={nationPicker.nations}
+              onPick={(n)=>{
+                const pickedRec={...nationPicker.rec,_fbid:n.fbid,_nid:n.nid,_nname:n.nname};
+                setNationPicker(null);
+                closeModal();
+                setViewingRec({rec:pickedRec});
+              }}
+              onClose={()=>{setNationPicker(null);closeModal();}}
+            />
+          </ModalSheet>
         )}
       </FullPage>
     );
@@ -1536,19 +1623,31 @@ export default function App() {
             </div>
           ):(
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {filteredRecs.map((rec,i)=>(
-                <div key={rec._fbid} className="rc" style={{animationDelay:`${i*30}ms`}}>
-                  <RecCard
-                    rec={{...rec,saved:savedRecs[rec._fbid]}}
-                    user={user}
-                    onLike={()=>toggleLike(rec)}
-                    onSave={()=>toggleSave(rec)}
-                    showNation={!activeNId&&rec._nname}
-                    onProfileClick={()=>setViewingProfile({member:rec.from,nationId:rec._nid||activeNId})}
-                    onOpen={()=>setViewingRec({rec})}
-                  />
-                </div>
-              ))}
+              {filteredRecs.map((rec,i)=>{
+                const isMulti = !activeNId && rec._nations && rec._nations.length > 1;
+                return (
+                  <div key={rec._fbid} className="rc" style={{animationDelay:`${i*30}ms`}}>
+                    <RecCard
+                      rec={{...rec, saved: rec._nations
+                        ? rec._nations.some(n=>savedRecs[n.fbid])
+                        : savedRecs[rec._fbid]}}
+                      user={user}
+                      onLike={()=>toggleLike(rec)}
+                      onSave={()=>toggleSave(rec)}
+                      showNation={!activeNId ? (isMulti ? "__multiple__" : rec._nname) : null}
+                      onProfileClick={()=>setViewingProfile({member:rec.from,nationId:rec._nid||activeNId})}
+                      onOpen={()=>{
+                        if(isMulti) {
+                          setNationPicker({nations: rec._nations, rec});
+                          setModal("nationPicker");
+                        } else {
+                          setViewingRec({rec});
+                        }
+                      }}
+                    />
+                  </div>
+                );
+              })}
             </div>
           )
         )}
@@ -1572,12 +1671,27 @@ export default function App() {
       </nav>
 
       {modal&&(
-        <ModalSheet onClose={closeModal}>
+        <ModalSheet onClose={()=>{
+          if(modal==="nationPicker") setNationPicker(null);
+          closeModal();
+        }}>
           {modal==="addRec"&&<AddRecModal form={recForm} setForm={setRecForm} onSubmit={(ids)=>handleAddRec(ids)} onSubmitReq={handleAddReq} myNations={myNations} activeNId={activeNId}/>}
           {modal==="joinNation"&&<JoinModal joinCode={joinCode} setJoinCode={setJoinCode} joinError={joinError} onJoin={handleJoin}/>}
           {modal==="createNation"&&!createdCode&&<CreateModal name={newNationName} setName={setNewNationName} onCreate={handleCreateNation}/>}
           {modal==="createNation"&&createdCode&&<CreatedSuccess code={createdCode} name={nations[createdCode]?.name} onDone={()=>{closeModal();setActiveNId(createdCode);setScreen("feed");}}/>}
           {modal==="addTop5"&&<AddTop5Modal form={top5Form} setForm={setTop5Form} onSubmit={handleSaveTop5}/>}
+          {modal==="nationPicker"&&nationPicker&&(
+            <NationPickerModal
+              nations={nationPicker.nations}
+              onPick={(n)=>{
+                const pickedRec={...nationPicker.rec,_fbid:n.fbid,_nid:n.nid,_nname:n.nname};
+                setNationPicker(null);
+                closeModal();
+                setViewingRec({rec:pickedRec});
+              }}
+              onClose={()=>{setNationPicker(null);closeModal();}}
+            />
+          )}
         </ModalSheet>
       )}
     </div>
