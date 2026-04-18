@@ -450,7 +450,7 @@ function AddTop5Modal({form,setForm,onSubmit}) {
   return (
     <div>
       <h2 style={{margin:"0 0 6px",fontSize:22,fontStyle:"italic",letterSpacing:"-0.5px",color:"#f0eee8"}}>Your Top 5</h2>
-      <p style={{margin:"0 0 12px",fontSize:13,color:"#555",fontFamily:"sans-serif"}}>Pick a category and rank your all-time favourites.</p>
+      <p style={{margin:"0 0 12px",fontSize:13,color:"#555",fontFamily:"sans-serif"}}>Pick a category, give it a title (optional), then rank your favourites.</p>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,marginBottom:14}}>
         {CATEGORIES.map(c=>(
           <button key={c.id} onClick={()=>setForm(f=>({...f,category:c.id,items:Array(5).fill("")}))}
@@ -460,10 +460,15 @@ function AddTop5Modal({form,setForm,onSubmit}) {
         ))}
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        <input
+          placeholder={`Title (optional) — e.g. "Best ${cat.label} of 2026"`}
+          value={form.title||""}
+          onChange={e=>setForm(f=>({...f,title:e.target.value}))}
+          style={{...S.input,padding:"9px 12px",fontSize:13,marginBottom:4}}/>
         {form.items.map((item,i)=>(
           <div key={i} style={{display:"flex",alignItems:"center",gap:10}}>
             <span style={{fontSize:16,fontWeight:700,fontStyle:"italic",color:i<3?cat.color:"#2e3450",minWidth:22,textAlign:"right"}}>{i+1}</span>
-            <input placeholder={i===0?"Your all-time favourite…":`#${i+1}`} value={item}
+            <input placeholder={i===0?"Your favourite…":`#${i+1}`} value={item}
               onChange={e=>setForm(f=>{const items=[...f.items];items[i]=e.target.value;return {...f,items};})}
               style={{...S.input,padding:"9px 12px",fontSize:13}}/>
           </div>
@@ -717,17 +722,17 @@ function RecDetailView({rec,cat,nationName,user,onBack,onLike,onSave,onComment,o
 
 // ─── Edit Top 5 Screen ────────────────────────────────────────────────────────
 function EditTop5Screen({editingTop5,onCancel,onSave}) {
-  const{member,nationId,catId,items}=editingTop5;
+  const{member,nationId,listId,catId,items,title}=editingTop5;
   const cat=CAT_MAP[catId];
   const paddedItems=[...items,...Array(5).fill("")].slice(0,5);
-  const [form,setForm]=useState({category:catId,items:paddedItems});
+  const [form,setForm]=useState({category:catId,title:title||"",items:paddedItems});
   return (
     <div style={{minHeight:"100vh",background:"#0d0f1a",color:"#f0eee8",fontFamily:"'Georgia',serif"}}>
       <div style={{maxWidth:520,margin:"0 auto",padding:"36px 22px 80px"}}>
         <button onClick={onCancel} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:13,fontFamily:"sans-serif",marginBottom:28,padding:0,display:"flex",alignItems:"center",gap:6}}>← Cancel</button>
         <div style={{fontSize:11,letterSpacing:"0.2em",textTransform:"uppercase",color:cat.color,marginBottom:6,fontFamily:"sans-serif",fontWeight:700}}>{cat.emoji} {cat.label}</div>
         <h1 style={{fontSize:26,fontWeight:700,letterSpacing:"-0.8px",margin:"0 0 24px",fontStyle:"italic"}}>Edit your Top 5</h1>
-        <AddTop5Modal form={form} setForm={setForm} onSubmit={()=>onSave(nationId,member,form.category,form.items)}/>
+        <AddTop5Modal form={form} setForm={setForm} onSubmit={()=>onSave(nationId,member,listId,form.category,form.title,form.items)}/>
       </div>
     </div>
   );
@@ -736,12 +741,26 @@ function EditTop5Screen({editingTop5,onCancel,onSave}) {
 // ─── Top 5 Tab ────────────────────────────────────────────────────────────────
 function Top5Tab({myNations,activeNId,nations,onView,onAdd,onEdit,user,onProfile}) {
   const displayNations=activeNId?[nations[activeNId]]:myNations;
+
+  // Collect all lists across displayed nations, sorted newest first
   const entries=[];
   displayNations.forEach(n=>{
     if(!n?.topFives)return;
-    Object.entries(n.topFives).forEach(([member,cats])=>{
-      Object.keys(cats).forEach(catId=>{if(cats[catId]?.length)entries.push({member,nationId:n.id,nationName:n.name,catId});});
+    Object.entries(n.topFives).forEach(([member,lists])=>{
+      // lists is now { listId: { title, category, items, ts } }
+      Object.entries(lists).forEach(([listId,list])=>{
+        if(list?.items?.length){
+          entries.push({member,nationId:n.id,nationName:n.name,listId,catId:list.category,title:list.title||"",items:list.items,ts:list.ts||0});
+        }
+      });
     });
+  });
+  // Sort: grouped by category (in CATEGORIES order), newest first within each group
+  const catOrder = CATEGORIES.map(c=>c.id);
+  entries.sort((a,b)=>{
+    const catDiff = catOrder.indexOf(a.catId) - catOrder.indexOf(b.catId);
+    if(catDiff!==0) return catDiff;
+    return b.ts - a.ts;
   });
   return (
     <div>
@@ -759,23 +778,23 @@ function Top5Tab({myNations,activeNId,nations,onView,onAdd,onEdit,user,onProfile
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           {entries.map((e,i)=>{
             const cat=CAT_MAP[e.catId];
-            const items=nations[e.nationId]?.topFives?.[e.member]?.[e.catId]||[];
+            const displayTitle=e.title||`${cat.label} Top 5`;
             const isOwn=user?.name===e.member;
             return (
-              <div key={i} onClick={()=>onView(e.member,e.nationId,e.catId)}
+              <div key={`${e.nationId}-${e.listId}`} onClick={()=>onView(e.member,e.nationId,e.listId)}
                 style={{background:"#13162a",borderRadius:14,padding:"14px 18px",border:"1px solid #1a1d30",cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"background 0.15s"}}
                 onMouseEnter={ev=>ev.currentTarget.style.background="#1a1d30"}
                 onMouseLeave={ev=>ev.currentTarget.style.background="#13162a"}>
                 <div style={{width:38,height:38,borderRadius:9,background:cat.color+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{cat.emoji}</div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:13,fontWeight:700}}>
-                    <span onClick={ev=>{ev.stopPropagation();onProfile(e.member,e.nationId);}} style={{color:"#e8c547",cursor:"pointer"}}>{e.member}</span>'s {cat.label} Top 5
+                  <div style={{fontSize:13,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                    <span onClick={ev=>{ev.stopPropagation();onProfile(e.member,e.nationId);}} style={{color:"#e8c547",cursor:"pointer"}}>{e.member}</span>'s {displayTitle}
                   </div>
-                  <div style={{fontSize:11,color:"#555",fontFamily:"sans-serif",marginTop:2}}>{items[0]}{items[1]?`, ${items[1]}`:""}{items.length>2?` +${items.length-2} more`:""}</div>
+                  <div style={{fontSize:11,color:"#555",fontFamily:"sans-serif",marginTop:2}}>{e.items[0]}{e.items[1]?`, ${e.items[1]}`:""}{e.items.length>2?` +${e.items.length-2} more`:""}</div>
                   {!activeNId&&<div style={{fontSize:10,color:"#3a4060",fontFamily:"sans-serif",marginTop:2}}>{e.nationName}</div>}
                 </div>
                 {isOwn?(
-                  <button onClick={ev=>{ev.stopPropagation();onEdit({member:e.member,nationId:e.nationId,catId:e.catId,items});}}
+                  <button onClick={ev=>{ev.stopPropagation();onEdit({member:e.member,nationId:e.nationId,listId:e.listId,catId:e.catId,title:e.title,items:e.items});}}
                     style={{background:"#1a1d30",border:"1px solid #272b42",borderRadius:8,padding:"4px 10px",fontSize:11,fontFamily:"sans-serif",fontWeight:700,color:"#e8c547",cursor:"pointer",flexShrink:0}}>Edit</button>
                 ):(
                   <span style={{color:"#e8c547",fontSize:14}}>→</span>
@@ -980,10 +999,13 @@ function NationCard({n,user,onEnter,onLeave,onViewProfile}) {
 }
 
 // ─── Top 5 Detail View (proper component so hooks work in conditional) ────────
-function Top5DetailView({member,nationId,category,nations,user,onBack,onDelete}) {
+function Top5DetailView({member,nationId,listId,nations,user,onBack,onDelete}) {
   const [confirmDelete,setConfirmDelete] = useState(false);
-  const items = nations[nationId]?.topFives?.[member]?.[category]||[];
-  const cat = CAT_MAP[category];
+  const list = nations[nationId]?.topFives?.[member]?.[listId]||{};
+  const items = list.items||[];
+  const catId = list.category||"movies";
+  const cat = CAT_MAP[catId];
+  const displayTitle = list.title||`${cat.label} Top 5`;
   const isOwn = user?.name===member;
   return (
     <FullPage onBack={onBack}>
@@ -993,14 +1015,14 @@ function Top5DetailView({member,nationId,category,nations,user,onBack,onDelete})
           <button onClick={()=>setConfirmDelete(true)} style={{background:"none",border:"none",cursor:"pointer",color:"#e87a7a",fontSize:12,fontFamily:"sans-serif"}}>Delete</button>
         )}
       </div>
-      <h1 style={{fontSize:28,fontWeight:700,letterSpacing:"-1px",margin:"0 0 4px",fontStyle:"italic"}}>{member}'s Top 5</h1>
+      <h1 style={{fontSize:28,fontWeight:700,letterSpacing:"-1px",margin:"0 0 4px",fontStyle:"italic"}}>{member}'s {displayTitle}</h1>
       <p style={{color:"#444",fontSize:13,fontFamily:"sans-serif",marginBottom:28}}>{nations[nationId]?.name}</p>
       {confirmDelete&&(
         <div style={{background:"#1a1d30",borderRadius:12,padding:16,marginBottom:20,border:"1px solid #272b42"}}>
           <p style={{margin:"0 0 12px",fontSize:13,fontFamily:"sans-serif",color:"#f0eee8"}}>Delete this Top 5 list? This can't be undone.</p>
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>setConfirmDelete(false)} style={{background:"transparent",color:"#666",border:"1px solid #272b42",borderRadius:10,padding:"8px",fontSize:12,cursor:"pointer",flex:1}}>Cancel</button>
-            <button onClick={()=>onDelete(nationId,member,category)} style={{flex:1,background:"#e87a7a",color:"#0d0f1a",border:"none",borderRadius:10,padding:"8px",fontSize:13,fontWeight:700,cursor:"pointer"}}>Delete</button>
+            <button onClick={()=>onDelete(nationId,member,listId)} style={{flex:1,background:"#e87a7a",color:"#0d0f1a",border:"none",borderRadius:10,padding:"8px",fontSize:13,fontWeight:700,cursor:"pointer"}}>Delete</button>
           </div>
         </div>
       )}
@@ -1032,7 +1054,7 @@ export default function App() {
   const [newNationName,setNewNationName]= useState("");
   const [createdCode,setCreatedCode]    = useState(null);
   const [recForm,setRecForm]    = useState({category:"movies",field1:"",field2:"",note:""});
-  const [top5Form,setTop5Form]  = useState({category:"movies",items:Array(5).fill("")});
+  const [top5Form,setTop5Form]  = useState({category:"movies",title:"",items:Array(5).fill("")});
   const [viewingTop5,setViewingTop5]       = useState(null);
   const [viewingProfile,setViewingProfile] = useState(null);
   const [viewingRec,setViewingRec]         = useState(null);
@@ -1216,13 +1238,23 @@ export default function App() {
   async function handleSaveTop5(){
     const tid=activeNId||myNationIds[0];
     if(!tid||!user)return;
-    await set(ref(db,`nations/${tid}/topFives/${user.name}/${top5Form.category}`),top5Form.items.filter(i=>i.trim()));
-    setTop5Form({category:"movies",items:Array(5).fill("")});
+    await push(ref(db,`nations/${tid}/topFives/${user.name}`),{
+      title: top5Form.title.trim(),
+      category: top5Form.category,
+      items: top5Form.items.filter(i=>i.trim()),
+      ts: Date.now(),
+    });
+    setTop5Form({category:"movies",title:"",items:Array(5).fill("")});
     closeModal();
   }
 
-  async function handleEditTop5(nationId,member,catId,items){
-    await set(ref(db,`nations/${nationId}/topFives/${member}/${catId}`),items.filter(i=>i.trim()));
+  async function handleEditTop5(nationId,member,listId,category,title,items){
+    await set(ref(db,`nations/${nationId}/topFives/${member}/${listId}`),{
+      title: title.trim(),
+      category,
+      items: items.filter(i=>i.trim()),
+      ts: Date.now(),
+    });
     setEditingTop5(null);
   }
 
@@ -1313,8 +1345,8 @@ export default function App() {
     setViewingRec(null);
   }
 
-  async function handleDeleteTop5(nationId, member, catId){
-    await remove(ref(db,`nations/${nationId}/topFives/${member}/${catId}`));
+  async function handleDeleteTop5(nationId, member, listId){
+    await remove(ref(db,`nations/${nationId}/topFives/${member}/${listId}`));
     setEditingTop5(null);
     setViewingTop5(null);
   }
@@ -1341,9 +1373,12 @@ export default function App() {
     const memberRecs = sourceNations.length > 1 ? deduplicateRecs(memberRecsRaw) : memberRecsRaw;
     const memberTop5s=[];
     sourceNations.forEach(n=>{
-      const tf=n?.topFives?.[member]||{};
-      Object.keys(tf).forEach(catId=>{if(tf[catId]?.length)memberTop5s.push({catId,items:tf[catId],nationId:n.id,nationName:n.name});});
+      const lists=n?.topFives?.[member]||{};
+      Object.entries(lists).forEach(([listId,list])=>{
+        if(list?.items?.length) memberTop5s.push({listId,catId:list.category||"movies",title:list.title||"",items:list.items,ts:list.ts||0,nationId:n.id,nationName:n.name});
+      });
     });
+    memberTop5s.sort((a,b)=>b.ts-a.ts);
     const isMe=user?.name===member;
     return (
       <FullPage onBack={()=>setViewingProfile(null)}>
@@ -1380,14 +1415,15 @@ export default function App() {
             <div style={{display:"flex",flexDirection:"column",gap:9}}>
               {memberTop5s.map((t,i)=>{
                 const cat=CAT_MAP[t.catId];
+                const displayTitle=t.title||`${cat.label} Top 5`;
                 return (
-                  <div key={i} onClick={()=>{setViewingProfile(null);setViewingTop5({member,nationId:t.nationId,category:t.catId});}}
+                  <div key={i} onClick={()=>{setViewingProfile(null);setViewingTop5({member,nationId:t.nationId,listId:t.listId});}}
                     style={{background:"#13162a",borderRadius:12,padding:"13px 16px",border:"1px solid #1a1d30",cursor:"pointer",display:"flex",alignItems:"center",gap:12}}
                     onMouseEnter={e=>e.currentTarget.style.background="#1a1d30"}
                     onMouseLeave={e=>e.currentTarget.style.background="#13162a"}>
                     <div style={{width:36,height:36,borderRadius:9,background:cat.color+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{cat.emoji}</div>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,fontWeight:700}}>{cat.label} Top 5</div>
+                      <div style={{fontSize:13,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{displayTitle}</div>
                       <div style={{fontSize:11,color:"#555",fontFamily:"sans-serif",marginTop:1}}>{t.items[0]}{t.items[1]?`, ${t.items[1]}`:""}{t.items.length>2?` +${t.items.length-2} more`:""}</div>
                     </div>
                     <span style={{color:"#e8c547",fontSize:14}}>→</span>
@@ -1467,11 +1503,11 @@ export default function App() {
       <Top5DetailView
         member={viewingTop5.member}
         nationId={viewingTop5.nationId}
-        category={viewingTop5.category}
+        listId={viewingTop5.listId}
         nations={nations}
         user={user}
         onBack={()=>setViewingTop5(null)}
-        onDelete={(nId,m,cat)=>handleDeleteTop5(nId,m,cat)}
+        onDelete={(nId,m,lId)=>handleDeleteTop5(nId,m,lId)}
       />
     );
   }
@@ -1608,9 +1644,9 @@ export default function App() {
 
         {activeTab==="top5s"&&(
           <Top5Tab myNations={myNations} activeNId={activeNId} nations={nations}
-            onView={(member,nId,cat)=>setViewingTop5({member,nationId:nId,category:cat})}
+            onView={(member,nId,listId)=>setViewingTop5({member,nationId:nId,listId})}
             onAdd={()=>setModal("addTop5")} user={user}
-            onEdit={({member,nationId,catId,items})=>setEditingTop5({member,nationId,catId,items})}
+            onEdit={({member,nationId,listId,catId,title,items})=>setEditingTop5({member,nationId,listId,catId,title,items})}
             onProfile={(member,nId)=>setViewingProfile({member,nationId:nId})}/>
         )}
         {activeTab==="help"&&<HelpTab/>}
