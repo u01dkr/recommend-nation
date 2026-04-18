@@ -1203,8 +1203,9 @@ export default function App() {
     if(!recForm.field1.trim())return;
     // selectedIds is null when posting to a specific activeNId, or an array of chosen nation ids
     const targetIds = activeNId ? [activeNId] : (selectedIds || myNationIds);
+    const ts = Date.now(); // capture once so all Nation copies share the same timestamp for deduplication
     for(const tid of targetIds){
-      await push(ref(db,`nations/${tid}/recs`),{category:recForm.category,field1:recForm.field1,field2:recForm.field2,note:recForm.note,from:user.name,ts:Date.now(),likes:{},comments:{}});
+      await push(ref(db,`nations/${tid}/recs`),{category:recForm.category,field1:recForm.field1,field2:recForm.field2,note:recForm.note,from:user.name,ts,likes:{},comments:{}});
     }
     setRecForm({category:"movies",field1:"",field2:"",note:""});
     closeModal();
@@ -1213,6 +1214,7 @@ export default function App() {
   async function handleAddReq({category, text, selectedNations}){
     if(!text.trim()) return;
     const targetIds = activeNId ? [activeNId] : (selectedNations || myNationIds);
+    const ts = Date.now(); // capture once so all Nation copies share the same timestamp for deduplication
     for(const tid of targetIds){
       await push(ref(db,`nations/${tid}/recs`),{
         category,
@@ -1220,7 +1222,7 @@ export default function App() {
         field2: "",
         note: "",
         from: user.name,
-        ts: Date.now(),
+        ts,
         likes: {},
         comments: {},
         isRequest: true,
@@ -1612,6 +1614,23 @@ export default function App() {
                 {tab==="top5s"?"Top 5s":tab.charAt(0).toUpperCase()+tab.slice(1)}
               </button>
             ))}
+            {/* Alerts toggle — same visual style as tabs but acts as a toggle, not navigation */}
+            {typeof window!=="undefined"&&"Notification" in window&&(()=>{
+              const isOn = notifStatus==="granted" || (notifStatus!=="disabled"&&notifStatus!=="idle"&&notifStatus!=="requesting"&&notifStatus!=="denied"&&typeof window!=="undefined"&&Notification.permission==="granted");
+              const isDenied = notifStatus==="denied" || (typeof window!=="undefined"&&Notification.permission==="denied");
+              const isRequesting = notifStatus==="requesting";
+              function handleToggle(){
+                if(isRequesting) return;
+                if(isOn) handleDisableNotifications();
+                else handleEnableNotifications();
+              }
+              return (
+                <button onClick={handleToggle} title={isDenied?"Blocked — enable in device settings":undefined}
+                  style={{background:"none",border:"none",cursor:isDenied?"default":"pointer",padding:"6px 13px 9px",fontSize:11,fontFamily:"sans-serif",fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:isOn?"#e8c547":isDenied?"#2a2d40":"#444",borderBottom:"2px solid transparent",marginBottom:-1,transition:"color 0.15s",whiteSpace:"nowrap",marginLeft:"auto"}}>
+                  {isRequesting?"…":isOn?"Alerts On":"Alerts Off"}
+                </button>
+              );
+            })()}
           </div>
           {activeTab==="feed"&&(
             <div style={{display:"flex",gap:5,padding:"8px 0 10px",overflowX:"auto"}}>
