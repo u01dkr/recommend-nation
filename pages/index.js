@@ -445,8 +445,20 @@ function AddRecModal({form,setForm,onSubmit,onSubmitReq,myNations,activeNId}) {
   );
 }
 
-function AddTop5Modal({form,setForm,onSubmit}) {
+function AddTop5Modal({form,setForm,onSubmit,myNations,activeNId}) {
   const cat=CAT_MAP[form.category];
+  const [selectedNations,setSelectedNations]=useState(()=>new Set(myNations.map(n=>n.id)));
+  const showPicker=!activeNId&&myNations.length>1;
+
+  function toggleNation(id){
+    setSelectedNations(prev=>{
+      const next=new Set(prev);
+      if(next.has(id)&&next.size>1) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   return (
     <div>
       <h2 style={{margin:"0 0 6px",fontSize:22,fontStyle:"italic",letterSpacing:"-0.5px",color:"#f0eee8"}}>Your Top 5</h2>
@@ -473,7 +485,24 @@ function AddTop5Modal({form,setForm,onSubmit}) {
               style={{...S.input,padding:"9px 12px",fontSize:13}}/>
           </div>
         ))}
-        <button onClick={onSubmit} style={{...S.btn,marginTop:8,opacity:form.items[0].trim()?1:0.4}}>Save my Top 5 →</button>
+        {showPicker&&(
+          <div style={{marginTop:4}}>
+            <div style={{fontSize:11,color:"#555",fontFamily:"sans-serif",marginBottom:6,letterSpacing:"0.05em",textTransform:"uppercase",fontWeight:700}}>Post to</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {myNations.map(n=>{
+                const on=selectedNations.has(n.id);
+                return (
+                  <button key={n.id} onClick={()=>toggleNation(n.id)}
+                    style={{background:on?"#e8c547":"#1a1d30",color:on?"#0d0f1a":"#555",border:`1px solid ${on?"#e8c547":"#272b42"}`,borderRadius:20,padding:"5px 12px",fontSize:12,fontFamily:"sans-serif",fontWeight:700,cursor:"pointer",transition:"all 0.15s",display:"flex",alignItems:"center",gap:5}}>
+                    {on&&<span style={{fontSize:10}}>✓</span>}
+                    {nationPillLabel(n.name)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        <button onClick={()=>onSubmit(activeNId?null:[...selectedNations])} style={{...S.btn,marginTop:8,opacity:form.items[0].trim()?1:0.4}}>Save my Top 5 →</button>
       </div>
     </div>
   );
@@ -516,7 +545,48 @@ function RecCard({rec,user,onLike,onSave,showNation,onProfileClick,onOpen}) {
   const commentCount=Object.keys(rec.comments||{}).length;
   const av=rec.from?.[0]?.toUpperCase()||"?";
   const isReq=rec.isRequest;
+  const isTop5=rec.isTop5;
   const isMultiple=showNation==="__multiple__";
+
+  // Top 5 card — distinct trophy style
+  if(isTop5){
+    return (
+      <div onClick={onOpen}
+        style={{background:"#0f1a14",borderRadius:14,padding:"15px 17px",border:"1px solid #1a3025",position:"relative",overflow:"hidden",cursor:"pointer",transition:"background 0.15s"}}
+        onMouseEnter={e=>e.currentTarget.style.background="#131f19"}
+        onMouseLeave={e=>e.currentTarget.style.background="#0f1a14"}>
+        <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,background:cat.color,borderRadius:"14px 0 0 14px"}}/>
+        <div style={{paddingLeft:9}}>
+          <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:7}}>
+            <div className="av-tap" onClick={e=>{e.stopPropagation();onProfileClick();}}
+              style={{width:24,height:24,borderRadius:"50%",background:avatarColor(av),display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"sans-serif",flexShrink:0}}>{av}</div>
+            <span className="from-tap" onClick={e=>{e.stopPropagation();onProfileClick();}} style={{fontSize:12,color:"#666",fontFamily:"sans-serif"}}>{rec.from}</span>
+            <span style={{fontSize:10,color:"#4a8a60",background:"#1a3025",borderRadius:5,padding:"1px 6px",fontFamily:"sans-serif",fontWeight:700}}>top 5</span>
+            {showNation&&(
+              isMultiple
+                ? <span style={{fontSize:10,color:"#e8c547",background:"#1a2030",borderRadius:5,padding:"1px 6px",fontFamily:"sans-serif",fontWeight:700,border:"1px solid #2a3550"}}>Multiple</span>
+                : <span style={{fontSize:10,color:"#3a4060",background:"#1a1d30",borderRadius:5,padding:"1px 6px",fontFamily:"sans-serif"}}>{showNation}</span>
+            )}
+            <span style={{marginLeft:"auto",fontSize:13}}>🏆</span>
+          </div>
+          <h3 style={{margin:"0 0 2px",fontSize:16,fontWeight:700,letterSpacing:"-0.4px",lineHeight:1.2,color:"#c8e8d0"}}>{rec.field1}</h3>
+          {rec.field2&&<p style={{margin:"4px 0 0",fontSize:12,color:"#4a6a55",fontFamily:"sans-serif"}}>{rec.field2}</p>}
+          <div style={{display:"flex",alignItems:"center",gap:14,marginTop:11}} onClick={e=>e.stopPropagation()}>
+            <button onClick={e=>{e.stopPropagation();onLike();}} style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:5,padding:0,opacity:liked?1:0.35,transition:"opacity 0.15s"}}>
+              <span style={{fontSize:14}}>{liked?"❤️":"🤍"}</span>
+              {likeCount>0&&<span style={{fontSize:12,fontFamily:"sans-serif",color:liked?"#e87a7a":"#555",fontWeight:600}}>{likeCount}</span>}
+            </button>
+            <button onClick={e=>{e.stopPropagation();onSave();}} style={{background:"none",border:"none",cursor:"pointer",padding:0,opacity:rec.saved?1:0.3,fontSize:14,transition:"opacity 0.15s"}}>🔖</button>
+            <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4,opacity:0.5}}>
+              <span style={{fontSize:13}}>💬</span>
+              <span style={{fontSize:12,fontFamily:"sans-serif",color:"#666"}}>{commentCount>0?commentCount:"Comment"}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div onClick={onOpen}
       style={{background:isReq?"#0f1520":"#13162a",borderRadius:14,padding:"15px 17px",border:`1px solid ${isReq?"#1a2540":"#1a1d30"}`,position:"relative",overflow:"hidden",cursor:"pointer",transition:"background 0.15s"}}
@@ -732,7 +802,7 @@ function EditTop5Screen({editingTop5,onCancel,onSave}) {
         <button onClick={onCancel} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:13,fontFamily:"sans-serif",marginBottom:28,padding:0,display:"flex",alignItems:"center",gap:6}}>← Cancel</button>
         <div style={{fontSize:11,letterSpacing:"0.2em",textTransform:"uppercase",color:cat.color,marginBottom:6,fontFamily:"sans-serif",fontWeight:700}}>{cat.emoji} {cat.label}</div>
         <h1 style={{fontSize:26,fontWeight:700,letterSpacing:"-0.8px",margin:"0 0 24px",fontStyle:"italic"}}>Edit your Top 5</h1>
-        <AddTop5Modal form={form} setForm={setForm} onSubmit={()=>onSave(nationId,member,listId,form.category,form.title,form.items)}/>
+        <AddTop5Modal form={form} setForm={setForm} onSubmit={()=>onSave(nationId,member,listId,form.category,form.title,form.items)} myNations={[]} activeNId={nationId}/>
       </div>
     </div>
   );
@@ -863,7 +933,7 @@ function HelpTab() {
 
       {/* Top 5s */}
       <div style={sectionTitle}>Top 5s</div>
-      <Item title="Post a Top 5">Tap the <span style={HL}>Top 5s</span> tab or the <span style={HL}>🏆</span> icon in the bottom bar, then tap <span style={HL}>+ Add yours</span>. You can edit your Top 5 at any time by tapping <span style={HL}>Edit</span> next to your list.</Item>
+      <Item title="Post a Top 5">Tap the <span style={HL}>Top 5s</span> tab, then tap <span style={HL}>+ Add yours</span>. Choose a category, add an optional title (e.g. "Best Movies of 2026"), then rank up to 5 items. When you save, a card appears in your Nation's feed so everyone knows to look. If you're posting from the <span style={HL}>All feed</span>, you can choose which Nations to post to using the toggles at the bottom of the form — just like a regular rec. You can edit your Top 5 at any time by tapping <span style={HL}>Edit</span> next to your list.</Item>
 
       <div style={hr}/>
 
@@ -1214,15 +1284,39 @@ export default function App() {
     });
   }
 
-  async function handleSaveTop5(){
-    const tid=activeNId||myNationIds[0];
-    if(!tid||!user)return;
-    await push(ref(db,`nations/${tid}/topFives/${user.name}`),{
-      title: top5Form.title.trim(),
-      category: top5Form.category,
-      items: top5Form.items.filter(i=>i.trim()),
-      ts: Date.now(),
-    });
+  async function handleSaveTop5(selectedIds){
+    if(!top5Form.items[0].trim()||!user) return;
+    const targetIds = activeNId ? [activeNId] : (selectedIds || myNationIds);
+    const ts = Date.now();
+    const cat = CAT_MAP[top5Form.category];
+    const displayTitle = top5Form.title.trim() || `${cat.label} Top 5`;
+    const filteredItems = top5Form.items.filter(i=>i.trim());
+
+    for(const tid of targetIds){
+      // Save the Top 5 list itself
+      const listRef = await push(ref(db,`nations/${tid}/topFives/${user.name}`),{
+        title: top5Form.title.trim(),
+        category: top5Form.category,
+        items: filteredItems,
+        ts,
+      });
+      const listId = listRef.key;
+
+      // Push an announcement card to the feed so the Nation sees it
+      await push(ref(db,`nations/${tid}/recs`),{
+        isTop5: true,
+        listId,
+        category: top5Form.category,
+        field1: `${user.name}'s ${displayTitle}`,
+        field2: filteredItems.slice(0,2).join(", ") + (filteredItems.length>2?` +${filteredItems.length-2} more`:""),
+        note: "",
+        from: user.name,
+        ts,
+        likes: {},
+        comments: {},
+      });
+    }
+
     setTop5Form({category:"movies",title:"",items:Array(5).fill("")});
     closeModal();
   }
@@ -1668,7 +1762,9 @@ export default function App() {
                       showNation={!activeNId ? (isMulti ? "__multiple__" : rec._nname) : null}
                       onProfileClick={()=>setViewingProfile({member:rec.from,nationId:rec._nid||activeNId})}
                       onOpen={()=>{
-                        if(isMulti) {
+                        if(rec.isTop5) {
+                          setViewingTop5({member:rec.from,nationId:rec._nid,listId:rec.listId});
+                        } else if(isMulti) {
                           setNationPicker({nations: rec._nations, rec});
                           setModal("nationPicker");
                         } else {
@@ -1710,7 +1806,7 @@ export default function App() {
           {modal==="joinNation"&&<JoinModal joinCode={joinCode} setJoinCode={setJoinCode} joinError={joinError} onJoin={handleJoin}/>}
           {modal==="createNation"&&!createdCode&&<CreateModal name={newNationName} setName={setNewNationName} onCreate={handleCreateNation}/>}
           {modal==="createNation"&&createdCode&&<CreatedSuccess code={createdCode} name={nations[createdCode]?.name} onDone={()=>{closeModal();setActiveNId(createdCode);setScreen("feed");}}/>}
-          {modal==="addTop5"&&<AddTop5Modal form={top5Form} setForm={setTop5Form} onSubmit={handleSaveTop5}/>}
+          {modal==="addTop5"&&<AddTop5Modal form={top5Form} setForm={setTop5Form} onSubmit={(ids)=>handleSaveTop5(ids)} myNations={myNations} activeNId={activeNId}/>}
           {modal==="nationPicker"&&nationPicker&&(
             <NationPickerModal
               nations={nationPicker.nations}
