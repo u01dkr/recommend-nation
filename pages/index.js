@@ -879,46 +879,23 @@ function HelpTab() {
       <Item title="Leave a Nation">Go to Nations in the bottom bar. Tap <span style={HL}>Leave</span> on any Nation. You can rejoin later with the code.</Item>
       <Item title="Sign out">Tap your <span style={HL}>avatar</span> top right → <span style={HL}>Sign out</span>.</Item>
       <Item title="Delete your account">Tap your <span style={HL}>avatar</span> top right → <span style={HL}>Delete account</span>. Permanently removes all your data.</Item>
-      <Item title="Enable push notifications">Tap your <span style={HL}>avatar</span> top right → <span style={HL}>Enable notifications</span> → Allow. On iPhone, add the app to your home screen first (Safari → Share → Add to Home Screen).</Item>
+      <Item title="Enable push notifications">Tap <span style={HL}>Alerts Off</span> in the tab row at the top of the feed to switch on push notifications. The first time you do this, your browser will ask for permission — tap Allow. After that it toggles instantly. On iPhone, add the app to your home screen first (Safari → Share → Add to Home Screen) before enabling alerts.</Item>
       <Item title="Privacy Policy & Terms">Tap your <span style={HL}>avatar</span> top right → scroll to the links above your recommendations.</Item>
     </div>
   );
 }
 
 // ─── Notification Button ─────────────────────────────────────────────────────
-function NotificationButton({status,onEnable,onDisable}) {
+// Only shown on profile page now — purely to surface the "blocked" warning if needed.
+// The enable/disable toggle lives in the feed tab row.
+function NotificationButton({status}) {
   if(typeof window !== "undefined" && !("Notification" in window)) return null;
-
-  const isGranted = status==="granted" || (status!=="disabled" && status!=="idle" && status!=="requesting" && typeof window !== "undefined" && Notification.permission==="granted");
-  const isDenied  = status==="denied"  || (typeof window !== "undefined" && Notification.permission==="denied");
-
-  if(isGranted) {
-    return (
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
-          <span style={{fontSize:14}}>🔔</span>
-          <span style={{fontSize:12,fontFamily:"sans-serif",color:"#7ae8a0"}}>Notifications enabled</span>
-        </div>
-        <button onClick={onDisable}
-          style={{background:"none",border:"none",cursor:"pointer",fontSize:11,fontFamily:"sans-serif",color:"#555",textDecoration:"underline",padding:0}}>
-          Disable
-        </button>
-      </div>
-    );
-  }
-  if(isDenied) {
-    return (
-      <div style={{marginBottom:8}}>
-        <span style={{fontSize:12,fontFamily:"sans-serif",color:"#e87a7a"}}>Notifications blocked — please enable in your device settings</span>
-      </div>
-    );
-  }
+  const isDenied = status==="denied" || (typeof window !== "undefined" && Notification.permission==="denied");
+  if(!isDenied) return null;
   return (
-    <button onClick={onEnable} disabled={status==="requesting"}
-      style={{background:"#1a1d30",border:"1px solid #272b42",borderRadius:10,padding:"8px 14px",fontSize:12,fontFamily:"sans-serif",color:"#e8c547",cursor:"pointer",marginBottom:8,display:"flex",alignItems:"center",gap:6,transition:"all 0.15s"}}>
-      <span style={{fontSize:14}}>🔔</span>
-      {status==="requesting"?"Enabling…":"Enable notifications"}
-    </button>
+    <div style={{marginBottom:8}}>
+      <span style={{fontSize:12,fontFamily:"sans-serif",color:"#e87a7a"}}>🔕 Notifications blocked — please enable in your device settings</span>
+    </div>
   );
 }
 
@@ -1324,7 +1301,7 @@ export default function App() {
     if(!authUser) return;
     try {
       await remove(ref(db, `users/${authUser.uid}/fcmTokens`));
-      setNotifStatus("disabled"); // custom state to override browser permission check
+      setNotifStatus("disabled");
     } catch(e) {
       console.error("Error disabling notifications:", e);
     }
@@ -1402,7 +1379,7 @@ export default function App() {
               <button onClick={handleSignOut} style={{...S.btnSec,fontSize:12,width:"auto",padding:"8px 16px"}}>Sign out</button>
               <DeleteAccountButton onDelete={handleDeleteAccount}/>
             </div>
-            <NotificationButton status={notifStatus} onEnable={handleEnableNotifications} onDisable={handleDisableNotifications}/>
+            <NotificationButton status={notifStatus}/>
             <div style={{display:"flex",gap:16,marginTop:10,flexWrap:"wrap"}}>
               <a href="/privacy" target="_blank" rel="noopener noreferrer"
                 style={{fontSize:11,color:"#444",fontFamily:"sans-serif",textDecoration:"underline"}}>Privacy Policy</a>
@@ -1614,13 +1591,12 @@ export default function App() {
                 {tab==="top5s"?"Top 5s":tab.charAt(0).toUpperCase()+tab.slice(1)}
               </button>
             ))}
-            {/* Alerts toggle — same visual style as tabs but acts as a toggle, not navigation */}
             {typeof window!=="undefined"&&"Notification" in window&&(()=>{
-              const isOn = notifStatus==="granted" || (notifStatus!=="disabled"&&notifStatus!=="idle"&&notifStatus!=="requesting"&&notifStatus!=="denied"&&typeof window!=="undefined"&&Notification.permission==="granted");
-              const isDenied = notifStatus==="denied" || (typeof window!=="undefined"&&Notification.permission==="denied");
+              const isOn = notifStatus==="granted"||(notifStatus!=="disabled"&&notifStatus!=="idle"&&notifStatus!=="requesting"&&notifStatus!=="denied"&&Notification.permission==="granted");
+              const isDenied = notifStatus==="denied"||(Notification.permission==="denied");
               const isRequesting = notifStatus==="requesting";
               function handleToggle(){
-                if(isRequesting) return;
+                if(isRequesting||isDenied) return;
                 if(isOn) handleDisableNotifications();
                 else handleEnableNotifications();
               }
