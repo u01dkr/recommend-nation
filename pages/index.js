@@ -1,3 +1,4 @@
+// v2
 import { useState, useRef, useEffect } from "react";
 import { db, auth, requestNotificationPermission } from "../lib/firebase";
 import { ref, onValue, set, push, update, get, remove } from "firebase/database";
