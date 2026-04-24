@@ -1,4 +1,3 @@
-// v2
 import { useState, useRef, useEffect } from "react";
 import { db, auth, requestNotificationPermission } from "../lib/firebase";
 import { ref, onValue, set, push, update, get, remove } from "firebase/database";
@@ -1108,7 +1107,9 @@ export default function App() {
   const [viewingRec,setViewingRec]         = useState(null);
   const [savedRecs,setSavedRecs]           = useState({});
   const [editingTop5,setEditingTop5]       = useState(null);
-  const [notifStatus,setNotifStatus]       = useState("idle"); // idle | requesting | granted | denied
+  const [notifStatus,setNotifStatus]       = useState("idle");
+  const [searchOpen,setSearchOpen]         = useState(false);
+  const [searchQuery,setSearchQuery]       = useState("");
   const [nationPicker,setNationPicker]     = useState(null);  // { nations:[{nid,nname,fbid}], rec }
 
   // ── Listen to Firebase Auth state ──
@@ -1185,6 +1186,12 @@ export default function App() {
       : savedRecs[r._fbid];
     if(activeCat!=="all") return r.category===activeCat;
     return true;
+  }).filter(r=>{
+    if(!searchQuery.trim()) return true;
+    const q=searchQuery.trim().toLowerCase();
+    return (r.field1||"").toLowerCase().includes(q)
+        || (r.field2||"").toLowerCase().includes(q)
+        || (r.note||"").toLowerCase().includes(q);
   });
 
   const liveRec = viewingRec ? (()=>{
@@ -1661,16 +1668,38 @@ export default function App() {
       <header style={{background:"#0d0f1acc",backdropFilter:"blur(14px)",position:"sticky",top:0,zIndex:50,borderBottom:"1px solid #1a1d30"}}>
         <div style={{maxWidth:600,margin:"0 auto",padding:"12px 18px 0"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,overflow:"hidden"}}>
-              <button onClick={()=>setScreen("nations")} style={{background:"none",border:"none",cursor:"pointer",padding:0,flexShrink:0}}>
-                <span style={{fontSize:19,fontStyle:"italic",fontWeight:700,letterSpacing:"-1px",color:"#e8c547"}}>RN</span>
-              </button>
-              <div style={{display:"flex",gap:5,overflowX:"auto"}}>
-                <NationPill label="All" active={activeNId===null} onClick={()=>{setActiveNId(null);setActiveCat("all");}}/>
-                {myNations.map(n=><NationPill key={n.id} label={nationPillLabel(n.name)} active={activeNId===n.id} onClick={()=>{setActiveNId(n.id);setActiveCat("all");}}/>)}
-              </div>
+            <div style={{display:"flex",alignItems:"center",gap:10,overflow:"hidden",flex:1,minWidth:0}}>
+              {!searchOpen&&(
+                <>
+                  <button onClick={()=>setScreen("nations")} style={{background:"none",border:"none",cursor:"pointer",padding:0,flexShrink:0}}>
+                    <span style={{fontSize:19,fontStyle:"italic",fontWeight:700,letterSpacing:"-1px",color:"#e8c547"}}>RN</span>
+                  </button>
+                  <div style={{display:"flex",gap:5,overflowX:"auto"}}>
+                    <NationPill label="All" active={activeNId===null} onClick={()=>{setActiveNId(null);setActiveCat("all");}}/>
+                    {myNations.map(n=><NationPill key={n.id} label={nationPillLabel(n.name)} active={activeNId===n.id} onClick={()=>{setActiveNId(n.id);setActiveCat("all");}}/>)}
+                  </div>
+                </>
+              )}
+              {searchOpen&&(
+                <div style={{display:"flex",alignItems:"center",gap:8,flex:1}}>
+                  <span style={{fontSize:16,color:"#555",flexShrink:0}}>🔍</span>
+                  <input
+                    autoFocus
+                    placeholder={activeNId?"Search this Nation…":"Search all Nations…"}
+                    value={searchQuery}
+                    onChange={e=>setSearchQuery(e.target.value)}
+                    style={{...S.input,padding:"7px 12px",fontSize:14,flex:1,borderRadius:10,height:34}}
+                  />
+                  <button onClick={()=>{setSearchOpen(false);setSearchQuery("");}} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:13,fontFamily:"sans-serif",flexShrink:0,padding:0}}>✕</button>
+                </div>
+              )}
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0,marginLeft:8}}>
+              {!searchOpen&&(
+                <button onClick={()=>{setSearchOpen(true);setActiveTab("feed");}} style={{background:"none",border:"none",cursor:"pointer",padding:"0 2px",fontSize:17,color:"#555",lineHeight:1,transition:"color 0.15s"}}
+                  onMouseEnter={e=>e.currentTarget.style.color="#e8c547"}
+                  onMouseLeave={e=>e.currentTarget.style.color="#555"}>🔍</button>
+              )}
               {user&&myNationIds.length>0&&(
                 <div className="av-tap" onClick={()=>setViewingProfile({member:user.name,nationId:activeNId||null})}
                   style={{width:28,height:28,borderRadius:"50%",background:avatarColor(user.name[0]),display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#fff",fontWeight:700,fontFamily:"sans-serif",transition:"opacity 0.15s"}}>
@@ -1682,7 +1711,7 @@ export default function App() {
           </div>
           <div style={{display:"flex",borderBottom:"1px solid #1a1d30"}}>
             {["feed","saved","top5s","help"].map(tab=>(
-              <button key={tab} onClick={()=>setActiveTab(tab)} style={{background:"none",border:"none",cursor:"pointer",padding:"6px 13px 9px",fontSize:11,fontFamily:"sans-serif",fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:activeTab===tab?"#e8c547":"#444",borderBottom:activeTab===tab?"2px solid #e8c547":"2px solid transparent",marginBottom:-1,transition:"color 0.15s"}}>
+              <button key={tab} onClick={()=>{setActiveTab(tab);if(tab!=="feed"){setSearchOpen(false);setSearchQuery("");}}} style={{background:"none",border:"none",cursor:"pointer",padding:"6px 13px 9px",fontSize:11,fontFamily:"sans-serif",fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",color:activeTab===tab?"#e8c547":"#444",borderBottom:activeTab===tab?"2px solid #e8c547":"2px solid transparent",marginBottom:-1,transition:"color 0.15s"}}>
                 {tab==="top5s"?"Top 5s":tab.charAt(0).toUpperCase()+tab.slice(1)}
               </button>
             ))}
@@ -1713,6 +1742,13 @@ export default function App() {
       </header>
 
       <main style={{maxWidth:600,margin:"0 auto",padding:"18px 18px 100px"}}>
+        {searchQuery.trim()&&activeTab==="feed"&&(
+          <div style={{fontSize:12,fontFamily:"sans-serif",color:"#555",marginBottom:12}}>
+            {filteredRecs.length===0
+              ? `No results for "${searchQuery}"`
+              : `${filteredRecs.length} result${filteredRecs.length!==1?"s":""} for "${searchQuery}"`}
+          </div>
+        )}
         {activeNation&&(
           <div style={{marginBottom:14,padding:"12px 16px",background:"#13162a",borderRadius:12,display:"flex",justifyContent:"space-between",alignItems:"center",border:"1px solid #1a1d30"}}>
             <div>
