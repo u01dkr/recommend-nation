@@ -939,6 +939,7 @@ function HelpTab() {
 
       {/* Filtering */}
       <div style={sectionTitle}>Filtering</div>
+      <Item title="Search">Tap the <span style={HL}>🔍</span> magnifying glass in the top right of the feed to search for a specific rec. Type any word — a city, a name, a keyword — and matching recs appear instantly. Search respects whichever Nation you currently have selected. Tap <span style={HL}>✕</span> to close and return to the normal feed.</Item>
       <Item title="Filter by Nation">Tap any Nation pill at the top of the screen. Tap <span style={HL}>All</span> to see everything.</Item>
       <Item title="Filter by category">In the Feed tab, tap any category pill (🎬 Movies, 📺 TV Series etc.).</Item>
 
@@ -1756,14 +1757,6 @@ export default function App() {
               <div style={{fontSize:11,color:"#555",fontFamily:"sans-serif",marginTop:2}}>
                 {Object.keys(activeNation.members||{}).length} members · code: <span style={{color:"#e8c547",letterSpacing:"0.12em",fontWeight:700}}>{activeNation.code}</span>
               </div>
-            </div>
-            <div style={{display:"flex"}}>
-              {Object.keys(activeNation.members||{}).slice(0,5).map((m,i)=>(
-                <div key={i} className="av-tap" onClick={()=>setViewingProfile({member:m,nationId:activeNId})}
-                  style={{width:28,height:28,borderRadius:"50%",background:avatarColor(m[0]),display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#fff",fontWeight:700,fontFamily:"sans-serif",border:"2px solid #0d0f1a",marginLeft:i>0?-8:0,transition:"opacity 0.15s",zIndex:5-i}}>
-                  {m[0]}
-                </div>
-              ))}
             </div>
           </div>
         )}
