@@ -373,7 +373,7 @@ function AddRecModal({form,setForm,onSubmit,onSubmitReq,myNations,activeNId}) {
         <div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:14}}>
             {CATEGORIES.map(c=>(
-              <button key={c.id} onClick={()=>setForm(f=>({...f,category:c.id,field1:"",field2:"",note:""}))}
+              <button key={c.id} onClick={()=>setForm(f=>({...f,category:c.id}))}
                 style={{background:form.category===c.id?c.color:"#1a1d30",color:form.category===c.id?"#0d0f1a":"#555",border:"none",borderRadius:10,padding:"8px 4px",fontSize:10,fontFamily:"sans-serif",fontWeight:700,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,transition:"all 0.15s"}}>
                 <span style={{fontSize:18}}>{c.emoji}</span><span style={{lineHeight:1.2,textAlign:"center"}}>{c.label}</span>
               </button>
