@@ -552,25 +552,24 @@ function RecCard({rec,user,onLike,onSave,showNation,onProfileClick,onOpen}) {
   if(isTop5){
     return (
       <div onClick={onOpen}
-        style={{background:"#0f1a14",borderRadius:14,padding:"15px 17px",border:"1px solid #1a3025",position:"relative",overflow:"hidden",cursor:"pointer",transition:"background 0.15s"}}
-        onMouseEnter={e=>e.currentTarget.style.background="#131f19"}
-        onMouseLeave={e=>e.currentTarget.style.background="#0f1a14"}>
-        <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,background:cat.color,borderRadius:"14px 0 0 14px"}}/>
+        style={{background:"#1a1400",borderRadius:14,padding:"15px 17px",border:"1px solid #2e2400",position:"relative",overflow:"hidden",cursor:"pointer",transition:"background 0.15s"}}
+        onMouseEnter={e=>e.currentTarget.style.background="#201900"}
+        onMouseLeave={e=>e.currentTarget.style.background="#1a1400"}>
+        <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,background:"#e8c547",borderRadius:"14px 0 0 14px"}}/>
         <div style={{paddingLeft:9}}>
           <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:7}}>
             <div className="av-tap" onClick={e=>{e.stopPropagation();onProfileClick();}}
               style={{width:24,height:24,borderRadius:"50%",background:avatarColor(av),display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"sans-serif",flexShrink:0}}>{av}</div>
             <span className="from-tap" onClick={e=>{e.stopPropagation();onProfileClick();}} style={{fontSize:12,color:"#666",fontFamily:"sans-serif"}}>{rec.from}</span>
-            <span style={{fontSize:10,color:"#4a8a60",background:"#1a3025",borderRadius:5,padding:"1px 6px",fontFamily:"sans-serif",fontWeight:700}}>top 5</span>
+            <span style={{fontSize:10,color:"#e8c547",background:"#2a1f00",borderRadius:5,padding:"1px 6px",fontFamily:"sans-serif",fontWeight:700,border:"1px solid #3a2e00"}}>🏆 top 5</span>
             {showNation&&(
               isMultiple
                 ? <span style={{fontSize:10,color:"#e8c547",background:"#1a2030",borderRadius:5,padding:"1px 6px",fontFamily:"sans-serif",fontWeight:700,border:"1px solid #2a3550"}}>Multiple</span>
                 : <span style={{fontSize:10,color:"#3a4060",background:"#1a1d30",borderRadius:5,padding:"1px 6px",fontFamily:"sans-serif"}}>{showNation}</span>
             )}
-            <span style={{marginLeft:"auto",fontSize:13}}>🏆</span>
           </div>
-          <h3 style={{margin:"0 0 2px",fontSize:16,fontWeight:700,letterSpacing:"-0.4px",lineHeight:1.2,color:"#c8e8d0"}}>{rec.field1}</h3>
-          {rec.field2&&<p style={{margin:"4px 0 0",fontSize:12,color:"#4a6a55",fontFamily:"sans-serif"}}>{rec.field2}</p>}
+          <h3 style={{margin:"0 0 2px",fontSize:16,fontWeight:700,letterSpacing:"-0.4px",lineHeight:1.2,color:"#e8c547"}}>{rec.field1}</h3>
+          {rec.field2&&<p style={{margin:"4px 0 0",fontSize:12,color:"#7a6a30",fontFamily:"sans-serif"}}>{rec.field2}</p>}
           <div style={{display:"flex",alignItems:"center",gap:14,marginTop:11}} onClick={e=>e.stopPropagation()}>
             <button onClick={e=>{e.stopPropagation();onLike();}} style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:5,padding:0,opacity:liked?1:0.35,transition:"opacity 0.15s"}}>
               <span style={{fontSize:14}}>{liked?"❤️":"🤍"}</span>
@@ -589,16 +588,16 @@ function RecCard({rec,user,onLike,onSave,showNation,onProfileClick,onOpen}) {
 
   return (
     <div onClick={onOpen}
-      style={{background:isReq?"#0f1520":"#13162a",borderRadius:14,padding:"15px 17px",border:`1px solid ${isReq?"#1a2540":"#1a1d30"}`,position:"relative",overflow:"hidden",cursor:"pointer",transition:"background 0.15s"}}
-      onMouseEnter={e=>e.currentTarget.style.background=isReq?"#131c30":"#1a1f35"}
-      onMouseLeave={e=>e.currentTarget.style.background=isReq?"#0f1520":"#13162a"}>
-      <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,background:isReq?"#5a7eb8":cat.color,borderRadius:"14px 0 0 14px"}}/>
+      style={{background:isReq?"#1a1200":"#13162a",borderRadius:14,padding:"15px 17px",border:`1px solid ${isReq?"#3a2800":"#1a1d30"}`,position:"relative",overflow:"hidden",cursor:"pointer",transition:"background 0.15s"}}
+      onMouseEnter={e=>e.currentTarget.style.background=isReq?"#201800":"#1a1f35"}
+      onMouseLeave={e=>e.currentTarget.style.background=isReq?"#1a1200":"#13162a"}>
+      <div style={{position:"absolute",left:0,top:0,bottom:0,width:3,background:isReq?"#e8a030":cat.color,borderRadius:"14px 0 0 14px"}}/>
       <div style={{paddingLeft:9}}>
         <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:7}}>
           <div className="av-tap" onClick={e=>{e.stopPropagation();onProfileClick();}}
             style={{width:24,height:24,borderRadius:"50%",background:avatarColor(av),display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",fontWeight:700,fontFamily:"sans-serif",flexShrink:0}}>{av}</div>
           <span className="from-tap" onClick={e=>{e.stopPropagation();onProfileClick();}} style={{fontSize:12,color:"#666",fontFamily:"sans-serif",transition:"color 0.15s"}}>{rec.from}</span>
-          {isReq&&<span style={{fontSize:10,color:"#5a7eb8",background:"#1a2540",borderRadius:5,padding:"1px 6px",fontFamily:"sans-serif",fontWeight:700}}>req</span>}
+          {isReq&&<span style={{fontSize:11,color:"#e8a030",background:"#2a1800",borderRadius:6,padding:"2px 8px",fontFamily:"sans-serif",fontWeight:700,border:"1px solid #3a2400"}}>❓ rec request</span>}
           {showNation&&(
             isMultiple
               ? <span style={{fontSize:10,color:"#e8c547",background:"#1a2030",borderRadius:5,padding:"1px 6px",fontFamily:"sans-serif",fontWeight:700,border:"1px solid #2a3550"}}>Multiple</span>
@@ -606,19 +605,19 @@ function RecCard({rec,user,onLike,onSave,showNation,onProfileClick,onOpen}) {
           )}
           <span style={{marginLeft:"auto",fontSize:13}}>{isReq?"❓":cat.emoji}</span>
         </div>
-        <h3 style={{margin:"0 0 2px",fontSize:16,fontWeight:700,letterSpacing:"-0.4px",lineHeight:1.2,color:isReq?"#a0b8d8":"#f0eee8"}}>{rec.field1}</h3>
+        <h3 style={{margin:"0 0 2px",fontSize:16,fontWeight:700,letterSpacing:"-0.4px",lineHeight:1.2,color:isReq?"#e8c090":"#f0eee8"}}>{rec.field1}</h3>
         {!isReq&&rec.field2&&<p style={{margin:0,fontSize:12,color:"#555",fontFamily:"sans-serif"}}>{rec.field2}</p>}
         {!isReq&&rec.note&&<p style={{margin:"8px 0 0",fontSize:13,color:"#7a7a9a",lineHeight:1.55,fontStyle:"italic",borderTop:"1px solid #1a1d30",paddingTop:8}}>"{rec.note}"</p>}
-        {isReq&&<p style={{margin:"6px 0 0",fontSize:12,color:"#5a7eb8",fontFamily:"sans-serif"}}>{cat.emoji} {cat.label}</p>}
+        {isReq&&<p style={{margin:"6px 0 0",fontSize:12,color:"#a07040",fontFamily:"sans-serif"}}>{cat.emoji} {cat.label}</p>}
         <div style={{display:"flex",alignItems:"center",gap:14,marginTop:11}} onClick={e=>e.stopPropagation()}>
           <button onClick={e=>{e.stopPropagation();onLike();}} style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:5,padding:0,opacity:liked?1:0.35,transition:"opacity 0.15s"}}>
             <span style={{fontSize:14}}>{liked?"❤️":"🤍"}</span>
             {likeCount>0&&<span style={{fontSize:12,fontFamily:"sans-serif",color:liked?"#e87a7a":"#555",fontWeight:600}}>{likeCount}</span>}
           </button>
           <button onClick={e=>{e.stopPropagation();onSave();}} style={{background:"none",border:"none",cursor:"pointer",padding:0,opacity:rec.saved?1:0.3,fontSize:14,transition:"opacity 0.15s"}}>🔖</button>
-          <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4,opacity:isReq?0.8:0.5}}>
+          <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4,opacity:isReq?0.9:0.5}}>
             <span style={{fontSize:13}}>💬</span>
-            <span style={{fontSize:12,fontFamily:"sans-serif",color:isReq?"#5a7eb8":"#666"}}>{commentCount>0?commentCount:isReq?"Respond":"Comment"}</span>
+            <span style={{fontSize:12,fontFamily:"sans-serif",color:isReq?"#e8a030":"#666"}}>{commentCount>0?commentCount:isReq?"Respond":"Comment"}</span>
           </div>
         </div>
       </div>
@@ -1185,6 +1184,7 @@ export default function App() {
     if(activeTab==="saved") return r._nations
       ? r._nations.some(n=>savedRecs[n.fbid])
       : savedRecs[r._fbid];
+    if(activeCat==="requests") return r.isRequest;
     if(activeCat!=="all") return r.category===activeCat;
     return true;
   }).filter(r=>{
@@ -1736,6 +1736,7 @@ export default function App() {
           {activeTab==="feed"&&(
             <div style={{display:"flex",gap:5,padding:"8px 0 10px",overflowX:"auto"}}>
               <CatPill label="All ✦" active={activeCat==="all"} onClick={()=>setActiveCat("all")} color="#e8c547"/>
+              <CatPill label="❓ Requests" active={activeCat==="requests"} onClick={()=>setActiveCat("requests")} color="#e8a030"/>
               {CATEGORIES.map(c=><CatPill key={c.id} label={`${c.emoji} ${c.label}`} active={activeCat===c.id} onClick={()=>setActiveCat(c.id)} color={c.color}/>)}
             </div>
           )}
