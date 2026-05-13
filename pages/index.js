@@ -576,7 +576,7 @@ function RecCard({rec,user,onLike,onSave,showNation,onProfileClick,onOpen}) {
               {likeCount>0&&<span style={{fontSize:12,fontFamily:"sans-serif",color:liked?"#e87a7a":"#555",fontWeight:600}}>{likeCount}</span>}
             </button>
             <button onClick={e=>{e.stopPropagation();onSave();}} style={{background:"none",border:"none",cursor:"pointer",padding:0,opacity:rec.saved?1:0.3,fontSize:14,transition:"opacity 0.15s"}}>🔖</button>
-            <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4,opacity:0.5}}>
+            <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4,opacity:0.5,cursor:"pointer"}} onClick={e=>{e.stopPropagation();onOpen();}}>
               <span style={{fontSize:13}}>💬</span>
               <span style={{fontSize:12,fontFamily:"sans-serif",color:"#666"}}>{commentCount>0?commentCount:"Comment"}</span>
             </div>
@@ -613,7 +613,7 @@ function RecCard({rec,user,onLike,onSave,showNation,onProfileClick,onOpen}) {
               {likeCount>0&&<span style={{fontSize:12,fontFamily:"sans-serif",color:liked?"#e87a7a":"#555",fontWeight:600}}>{likeCount}</span>}
             </button>
             <button onClick={e=>{e.stopPropagation();onSave();}} style={{background:"none",border:"none",cursor:"pointer",padding:0,opacity:rec.saved?1:0.3,fontSize:14,transition:"opacity 0.15s"}}>🔖</button>
-            <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4}}>
+            <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4,cursor:"pointer"}} onClick={e=>{e.stopPropagation();onOpen();}}>
               <span style={{fontSize:13}}>💬</span>
               <span style={{fontSize:12,fontFamily:"sans-serif",color:"#e8c547",fontWeight:600}}>{commentCount>0?commentCount:"Respond"}</span>
             </div>
@@ -650,7 +650,7 @@ function RecCard({rec,user,onLike,onSave,showNation,onProfileClick,onOpen}) {
             {likeCount>0&&<span style={{fontSize:12,fontFamily:"sans-serif",color:liked?"#e87a7a":"#555",fontWeight:600}}>{likeCount}</span>}
           </button>
           <button onClick={e=>{e.stopPropagation();onSave();}} style={{background:"none",border:"none",cursor:"pointer",padding:0,opacity:rec.saved?1:0.3,fontSize:14,transition:"opacity 0.15s"}}>🔖</button>
-          <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4,opacity:0.5}}>
+          <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4,opacity:0.5,cursor:"pointer"}} onClick={e=>{e.stopPropagation();onOpen();}}>
             <span style={{fontSize:13}}>💬</span>
             <span style={{fontSize:12,fontFamily:"sans-serif",color:"#666"}}>{commentCount>0?commentCount:"Comment"}</span>
           </div>
