@@ -693,10 +693,12 @@ function RecDetailView({rec,cat,nationName,user,onBack,onLike,onSave,onComment,o
 
   return (
     <div style={{minHeight:"100vh",background:"#0d0f1a",color:"#f0eee8",fontFamily:"'Georgia',serif",display:"flex",flexDirection:"column"}}>
-      <div style={{background:"#0d0f1acc",backdropFilter:"blur(14px)",borderBottom:"1px solid #1a1d30",padding:"14px 18px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
+      <div style={{background:"#0d0f1acc",backdropFilter:"blur(14px)",borderBottom:`1px solid ${rec.isRequest?"#e8c547":"#1a1d30"}`,padding:"14px 18px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10}}>
         <button onClick={onBack} style={{background:"none",border:"none",color:"#888",cursor:"pointer",fontSize:18,padding:0,lineHeight:1,flexShrink:0}}>←</button>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:15,fontWeight:700,letterSpacing:"-0.3px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{rec.field1}</div>
+          <div style={{fontSize:15,fontWeight:700,letterSpacing:"-0.3px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:rec.isRequest?"#e8c547":"#f0eee8"}}>
+            {rec.isRequest?"❓ Request":`${rec.field1}`}
+          </div>
           <div style={{fontSize:11,color:"#555",fontFamily:"sans-serif"}}>{cat.emoji} {cat.label}{nationName?` · ${nationName}`:""}</div>
         </div>
         {isOwner&&(
@@ -719,28 +721,31 @@ function RecDetailView({rec,cat,nationName,user,onBack,onLike,onSave,onComment,o
         )}
       </div>
       <div style={{flex:1,overflowY:"auto",padding:"0 0 120px"}}>
-        <div style={{margin:"16px 18px",background:"#13162a",borderRadius:16,padding:"18px 20px",border:"1px solid #1a1d30",position:"relative",overflow:"hidden"}}>
-          <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,background:cat.color,borderRadius:"16px 0 0 16px"}}/>
-          <div style={{paddingLeft:10}}>
+        <div style={{margin:"16px 18px",background:"#13162a",borderRadius:16,padding:"18px 20px",border:rec.isRequest?"2px solid #e8c547":"1px solid #1a1d30",position:"relative",overflow:"hidden"}}>
+          {!rec.isRequest&&<div style={{position:"absolute",left:0,top:0,bottom:0,width:4,background:cat.color,borderRadius:"16px 0 0 16px"}}/>}
+          <div style={{paddingLeft:rec.isRequest?0:10}}>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
               <div className="av-tap" onClick={()=>onProfileClick(rec.from)}
                 style={{width:28,height:28,borderRadius:"50%",background:avatarColor(av),display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#fff",fontWeight:700,fontFamily:"sans-serif",flexShrink:0}}>{av}</div>
               <span onClick={()=>onProfileClick(rec.from)} style={{fontSize:13,color:"#888",fontFamily:"sans-serif",cursor:"pointer"}}
                 onMouseEnter={e=>e.target.style.color="#e8c547"} onMouseLeave={e=>e.target.style.color="#888"}>{rec.from}</span>
+              {rec.isRequest&&<span style={{marginLeft:"auto",fontSize:11,color:"#e8c547",fontFamily:"sans-serif",fontWeight:700}}>❓ Request</span>}
             </div>
             <h2 style={{margin:"0 0 3px",fontSize:20,fontWeight:700,letterSpacing:"-0.5px",lineHeight:1.2}}>{rec.field1}</h2>
-            {rec.field2&&<p style={{margin:"0",fontSize:13,color:"#666",fontFamily:"sans-serif"}}>{rec.field2}</p>}
-            {rec.note&&<p style={{margin:"12px 0 0",fontSize:14,color:"#8a8aaa",lineHeight:1.65,fontStyle:"italic",borderTop:"1px solid #1a1d30",paddingTop:12}}>"{rec.note}"</p>}
+            {!rec.isRequest&&rec.field2&&<p style={{margin:"0",fontSize:13,color:"#666",fontFamily:"sans-serif"}}>{rec.field2}</p>}
+            {rec.isRequest&&<p style={{margin:"6px 0 0",fontSize:12,color:"#555",fontFamily:"sans-serif"}}>{cat.emoji} {cat.label}</p>}
+            {!rec.isRequest&&rec.note&&<p style={{margin:"12px 0 0",fontSize:14,color:"#8a8aaa",lineHeight:1.65,fontStyle:"italic",borderTop:"1px solid #1a1d30",paddingTop:12}}>"{rec.note}"</p>}
             <div style={{display:"flex",alignItems:"center",gap:16,marginTop:14,paddingTop:12,borderTop:"1px solid #1a1d30"}}>
               <button onClick={onLike} style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:6,padding:0,opacity:liked?1:0.4,transition:"opacity 0.15s"}}>
                 <span style={{fontSize:17}}>{liked?"❤️":"🤍"}</span>
                 {likeCount>0&&<span style={{fontSize:13,fontFamily:"sans-serif",color:liked?"#e87a7a":"#666",fontWeight:600}}>{likeCount}</span>}
               </button>
               <button onClick={onSave} style={{background:"none",border:"none",cursor:"pointer",padding:0,opacity:rec.saved?1:0.3,fontSize:17,transition:"opacity 0.15s"}}>🔖</button>
-              <button onClick={()=>inputRef.current?.focus()} style={{background:"none",border:"none",cursor:"pointer",padding:0,display:"flex",alignItems:"center",gap:5,opacity:0.5,marginLeft:"auto"}}
-                onMouseEnter={e=>e.currentTarget.style.opacity="1"} onMouseLeave={e=>e.currentTarget.style.opacity="0.5"}>
+              <button onClick={()=>inputRef.current?.focus()} style={{background:"none",border:"none",cursor:"pointer",padding:0,display:"flex",alignItems:"center",gap:5,marginLeft:"auto"}}
+                onMouseEnter={e=>e.currentTarget.style.opacity="1"} onMouseLeave={e=>e.currentTarget.style.opacity="0.5"}
+                style={{opacity:0.5}}>
                 <span style={{fontSize:15}}>💬</span>
-                <span style={{fontSize:12,fontFamily:"sans-serif",color:"#666"}}>Add comment</span>
+                <span style={{fontSize:12,fontFamily:"sans-serif",color:rec.isRequest?"#e8c547":"#666"}}>{rec.isRequest?"Respond":"Add comment"}</span>
               </button>
             </div>
           </div>
